@@ -21,7 +21,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,source',
 		// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-08-04T21:44:49&since=2020-08-04'
-		'/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&limit=9'
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type&until=2020-12-31&limit=20'
 	);
 
 	// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-06-01'
@@ -204,43 +204,101 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	private function extract_posts_from_data_posts( $importdata ) {
 		// Parse/convert everything to WP post structs
 
-		// $i = 20;
-
 		foreach ( $importdata->data as $post ) {
+
+			// if ($post->type == 'video')
+			// 	continue;
+
+			// if ($post->type != 'link')
+			// 	continue;
 
 			// Parse/adjust dates
 			$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post->created_time ) );
 			$post_date = get_date_from_gmt( $post_date_gmt );
 
+			// Prepare media first for embedding.
+
+			$videos = array();
+			if ($post->type == 'video' && !empty($post->source) && stristr($post->link, 'facebook.com')) {
+				if (!empty($post->object_id)) {
+					$video_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=source');
+					$videos[] = $video_object->source;
+				} else {
+					$videos[] = $post->source;
+				}
+			}
+
+			$photos = array();
+			if (!empty($post->full_picture)) {
+				if ($post->type == 'photo' && !empty($post->object_id)) {
+					$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
+					$images = array();
+					foreach ($photo_object->images as $image) {
+						$images[$image->height] = $image->source;
+					}
+					krsort($images);
+					$image = array_shift($images);
+					$photos[] = $image;
+				} else {
+					$photos[] = $post->full_picture;
+				}
+			}
+
 			// Construct a post title
 			$post_title = '';
 
-			$message = preg_split('/\n/', esc_html($post->message));
+			if (!empty($post->message))
+				$post_title = $post->message;
+			else if (!empty($post->story))
+				$post_title = $post->story;
+			else if (!empty($post->name))
+				$post_title = $post->name;
+			else
+				$post_title = 'Untitled';
+
+			$message = preg_split('/\n/', esc_html($post_title));
 			$title_words = explode(' ', strip_tags($message[0]));
-			$post_title .= implode(' ', array_slice($title_words, 0, 9));
+			$post_title  = implode(' ', array_slice($title_words, 0, 9));
+
+			$post_title = rtrim($post_title, ',');
 
 			if (count($title_words) > 9) {
-				$post_title .= '...';
-			}
-
-			if (empty($post_title)) {
-				$post_title .= 'Untitled';
+				if (!in_array(substr($post_title, -1), array('.', '?', '!', ',', ';', ':')))
+					$post_title .= '...';
 			}
 
 			// Construct a post body
 			$post_content = '';
 
+			if (!empty($post->story))
+				$post_content .= '<p>' . addslashes(esc_html($post->story)) . '</p>';
+
 			if (!empty($post->message))
-				$post_content .= '<p>' . esc_html($post->message) . '</p>';
+				$post_content .= '<p>' . addslashes(esc_html($post->message)) . '</p>';
 
-			if ($post->type == 'video' && !empty($post->source)) {
-				if (!empty($post->link))
+			if ($post->type == 'video' && stristr($post->link, 'facebook.com')) {
+				if (count($videos) > 0) {
+					foreach ($videos as $video) {
+						$post_content .= '<p>' . $video . '</p><br>';
+					}
+				} else {
 					$post_content .= '<p>' . esc_url($post->link) . '</p><br>';
-
-				$post_content .= '<p>' . $post->source . '</p><br>';
+				}
 			}
 
-			$post_content .= '<p><a href="https://www.facebook.com/' . $post->id . '">Source: Facebook</a></p>';
+			if (!empty($post->link) && stristr($post->link, 'youtube.com')) {
+				if (stristr($post->link, 'attribution_link')) {
+					$link = urldecode($post->link);
+					$link = preg_replace('/attribution_link.*?u=\//', '', $link);
+					$post_content .= '<p>' . esc_url($link) . '</p>';
+				} else {
+					$post_content .= '<p>' . esc_url($post->link) . '</p>';
+				}
+			}
+
+			$post_content .= '<footer>';
+
+			$post_content .= '<p><a href="' . $post->permalink_url . '">Facebook</a></p>';
 
 			if (!empty($post->name) || !empty($post->description)) {
 				$post_content .= '<blockquote>';
@@ -252,32 +310,31 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					$post_content .= '<p>' . esc_html($post->description) . '</p>';
 
 				if (!empty($post->link)) {
-					if (stristr($post->link, 'facebook.com'))
-						$post_content .= '<p><a href="' . esc_url($post->link) . '">Source: Facebook</a></p>';
-					else
+					if (stristr($post->link, 'facebook.com')) {
+						if ($post->link != $post->permalink_url) {
+							$post_content .= '<p><a href="' . esc_url($post->link) . '">Facebook</a></p>';
+						}
+					} else if (stristr($post->link, 'youtube.com')) {
+						$post_content .= '<p><a href="' . esc_url($post->link) . '">YouTube</a></p>';
+					} else {
 						$post_content .= '<p>' . make_clickable(esc_url($post->link)) . '</p>';
+					}
 				}
 
 				$post_content .= '</blockquote>';
 			}
 
-			// $post_content = make_clickable($post_content);
+			$post_content .= '</footer>';
 
 			$tags = $this->get_option( 'tags' );
+
+			$tags[] = $post->type;
 
 			preg_match_all( '/#([a-zA-Z0-9_\-]+)/', $post->story . ' ' . $post->message, $tag_matches );
 			$tags = array_merge( $tags, $tag_matches[1] );
 
 			// Apply selected category
 			$post_category = array( $this->get_option( 'category' ) );
-
-			$videos = array();
-			if ('video' == $post->type && !empty($post->source))
-				$videos[] = $post->source;
-
-			$photos = array();
-			if (!empty($post->full_picture))
-				$photos[] = $post->full_picture;
 
 			// @todo Import Likes?
 			// $post->likes->data[]->name
@@ -318,17 +375,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				'videos'
 			);
 
-			$this->posts[] = $compact;
-
-			// echo "<hr>";
-
-			// $i--;
-
-			// var_dump($i);
 			// var_dump($compact);
 
-			// if ($i <= 1)
-			// 	break;
+			$this->posts[] = $compact;
 		}
 	}
 
@@ -503,11 +552,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 				if ( ! empty( $photos ) ) {
 					foreach ( $photos as $photo ) {
-						if ( $facebook_raw->type == 'link' ) {
-							$this->sideload_fblink_media( $photo, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ) );
-						} else {
-							$this->sideload_media( $photo, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ) );
-						}
+						$this->sideload_media( $photo, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ) );
 					}
 				}
 
@@ -538,53 +583,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	private function rotate_endpoint() {
 		$this->set_option( 'endpoint_index', ( ( $this->get_option( 'endpoint_index', 0 ) + 1 ) % count( $this->api_endpoints ) ) );
 		$this->current_endpoint = $this->endpoint_prefix . $this->api_endpoints[ $this->get_option( 'endpoint_index' ) ];
-	}
-
-	/**
-	 * This is a helper for downloading/attaching/inserting media into a post when it's
-	 * being imported. See Flickr/Instagram for examples.
-	 */
-	function sideload_fblink_media( $url, $post_id, $post, $size = 'large' ) {
-		if ( !function_exists( 'media_sideload_image' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-		}
-
-		if ( !function_exists( 'download_url' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-		}
-
-		if ( !function_exists( 'wp_read_image_metadata' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-		}
-
-		$img = media_sideload_image( urldecode( $url ), $post_id, $post['post_title'] );
-
-		if ( is_string( $img ) ) { // returns an image tag
-			// Build a new string using a Large sized image
-			$attachments = get_posts(
-				array(
-					'post_parent' => $post_id,
-					'post_type' => 'attachment',
-					'post_mime_type' => 'image',
-				)
-			);
-
-			if ( $attachments ) { // @todo Only handles a single attachment
-				$data = wp_get_attachment_image_src( $attachments[0]->ID, $size );
-				if ( $data ) {
-					$img = '<img src="' . esc_url( $data[0] ) . '" width="' . esc_attr( $data[1] ) . '" height="' . esc_attr( $data[2] ) . '" alt="' . esc_attr( $post['post_title'] ) . '" class="keyring-img" />';
-				}
-			}
-
-			// Regex out the previous img tag, put this one in there instead, or prepend it to the top
-			if ( stristr( $post['post_content'], '<img' ) )
-				$post['post_content'] = preg_replace( '!<img[^>]*>!i', $img, $post['post_content'] );
-			else
-				$post['post_content'] = $img . "\n\n" . $post['post_content'];
-
-			$post['ID'] = $post_id;
-			wp_update_post( $post );
-		}
 	}
 
 	function sideload_video( $url, $post_id ) {
