@@ -268,7 +268,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			}
 
 			// Construct a post body
-			$post_content = '';
+			$post_content = '<!--fb_body_start-->';
 
 			if (!empty($post->story))
 				$post_content .= '<p>' . addslashes(esc_html($post->story)) . '</p>';
@@ -279,10 +279,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if ($post->type == 'video' && stristr($post->link, 'facebook.com')) {
 				if (count($videos) > 0) {
 					foreach ($videos as $video) {
-						$post_content .= '<p>' . $video . '</p><br>';
+						$post_content .= '<!--fb_video_start--><p>' . $video . '</p><!--fb_video_end-->';
 					}
 				} else {
-					$post_content .= '<p>' . esc_url($post->link) . '</p><br>';
+					$post_content .= '<!--fb_video_start--><p>' . esc_url($post->link) . '</p><!--fb_video_end-->';
 				}
 			}
 
@@ -290,13 +290,15 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if (stristr($post->link, 'attribution_link')) {
 					$link = urldecode($post->link);
 					$link = preg_replace('/attribution_link.*?u=\//', '', $link);
-					$post_content .= '<p>' . esc_url($link) . '</p>';
+					$post_content .= '<!--yt_video_start--><p>' . esc_url($link) . '</p><!--yt_video_end-->';
 				} else {
-					$post_content .= '<p>' . esc_url($post->link) . '</p>';
+					$post_content .= '<!--yt_video_start--><p>' . esc_url($post->link) . '</p><!--yt_video_end-->';
 				}
 			}
 
-			$post_content .= '<footer>';
+			$post_content .= '<!--fb_body_end-->';
+
+			$post_content .= '<!--fb_footer_start-->';
 
 			$post_content .= '<p><a href="' . $post->permalink_url . '">Facebook</a></p>';
 
@@ -324,7 +326,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_content .= '</blockquote>';
 			}
 
-			$post_content .= '</footer>';
+			$post_content .= '<!--fb_footer_end-->';
 
 			$tags = $this->get_option( 'tags' );
 
