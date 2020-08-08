@@ -21,7 +21,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,source',
 		// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-08-04T21:44:49&since=2020-08-04'
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type&until=2020-12-31&limit=20'
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments&until=2021-12-31&limit=2'
 	);
 
 	// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-06-01'
@@ -206,8 +206,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		foreach ( $importdata->data as $post ) {
 
-			// if ($post->type == 'video')
-			// 	continue;
+			if ($post->type != 'video' && $post->type != 'photo')
+				continue;
 
 			// if ($post->type != 'link')
 			// 	continue;
@@ -218,30 +218,53 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Prepare media first for embedding.
 
-			$videos = array();
-			if ($post->type == 'video' && !empty($post->source) && stristr($post->link, 'facebook.com')) {
-				if (!empty($post->object_id)) {
-					$video_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=source');
-					$videos[] = $video_object->source;
-				} else {
-					$videos[] = $post->source;
-				}
-			}
+			$videos  = array();
+			$photos  = array();
 
-			$photos = array();
-			if (!empty($post->full_picture)) {
-				if ($post->type == 'photo' && !empty($post->object_id)) {
-					$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
-					$images = array();
-					foreach ($photo_object->images as $image) {
-						$images[$image->height] = $image->source;
+			if ($post->type == 'photo' || $post->type == 'video') {
+
+				if (!empty($post->attachments)) {
+					foreach ($post->attachments->data as $data) {
+						if (!empty($data->subattachments)) {
+							foreach ($data->subattachments->data as $s_data) {
+								if ($s_data->type == 'photo') {
+									$photo_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=images');
+									$images = array();
+									foreach ($photo_object->images as $image) {
+										$images[$image->height] = $image->source;
+									}
+									krsort($images);
+									$image = array_shift($images);
+									$photos[] = $image;
+								} else if ($s_data->type == 'video') {
+									$video_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=source');
+									$videos[] = $video_object->source;
+								}
+							}
+						} else {
+							if ($post->type == 'photo') {
+								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
+								$images = array();
+								foreach ($photo_object->images as $image) {
+									$images[$image->height] = $image->source;
+								}
+								krsort($images);
+								$image = array_shift($images);
+								$photos[] = $image;
+							} else if ($post->type == 'video') {
+								$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source');
+								$videos[] = $video_object->source;
+							}
+						}
 					}
-					krsort($images);
-					$image = array_shift($images);
-					$photos[] = $image;
 				} else {
-					$photos[] = $post->full_picture;
+					if ($post->type == 'photo') {
+						$photos[] = $post->full_picture;
+					} else if ($post->type == 'video') {
+						$videos[] = $post->source;
+					}
 				}
+
 			}
 
 			// Construct a post title
@@ -271,18 +294,18 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$post_content = '<!--fb_body_start-->';
 
 			if (!empty($post->story))
-				$post_content .= '<p>' . addslashes(esc_html($post->story)) . '</p>';
+				$post_content .= addslashes(esc_html($post->story));
 
 			if (!empty($post->message))
-				$post_content .= '<p>' . addslashes(esc_html($post->message)) . '</p>';
+				$post_content .= make_clickable(addslashes(esc_html($post->message)));
 
 			if ($post->type == 'video' && stristr($post->link, 'facebook.com')) {
 				if (count($videos) > 0) {
 					foreach ($videos as $video) {
-						$post_content .= '<!--fb_video_start--><p>' . $video . '</p><!--fb_video_end-->';
+						$post_content .= '<!--fb_video_start-->' . $video . '<!--fb_video_end-->';
 					}
 				} else {
-					$post_content .= '<!--fb_video_start--><p>' . esc_url($post->link) . '</p><!--fb_video_end-->';
+					$post_content .= '<!--fb_video_start-->' . esc_url($post->link) . '<!--fb_video_end-->';
 				}
 			}
 
@@ -290,13 +313,44 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if (stristr($post->link, 'attribution_link')) {
 					$link = urldecode($post->link);
 					$link = preg_replace('/attribution_link.*?u=\//', '', $link);
-					$post_content .= '<!--yt_video_start--><p>' . esc_url($link) . '</p><!--yt_video_end-->';
+					$post_content .= '<!--yt_video_start-->' . esc_url($link) . '<!--yt_video_end-->';
 				} else {
-					$post_content .= '<!--yt_video_start--><p>' . esc_url($post->link) . '</p><!--yt_video_end-->';
+					$post_content .= '<!--yt_video_start-->' . esc_url($post->link) . '<!--yt_video_end-->';
 				}
 			}
 
+
+
+
+
+			$comments = array();
+			if (!empty($post->comments)) {
+				foreach ($post->comments->data as $data) {
+					if (substr($data->message, 0, 1) != '>')
+						continue;
+
+					$message = ltrim(substr($data->message, 1));
+
+					$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
+					$photo_object   = $this->service->request('https://graph.facebook.com/' . $comment_object->attachment->target->id . '?fields=images');
+					$images = array();
+					foreach ($photo_object->images as $image) {
+						$images[$image->height] = $image->source;
+					}
+					krsort($images);
+					$image = array_shift($images);
+					$photos[] = $image;
+
+					$post_content .= '<p>' . $message . '</p>';
+
+					$post_content .= '<p><img src="' . $image . '" /></p>';
+				}
+			}
+
+
 			$post_content .= '<!--fb_body_end-->';
+
+
 
 			$post_content .= '<!--fb_footer_start-->';
 
@@ -327,6 +381,15 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			}
 
 			$post_content .= '<!--fb_footer_end-->';
+
+
+
+
+
+
+
+
+
 
 			$tags = $this->get_option( 'tags' );
 
@@ -499,6 +562,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	function insert_posts() {
+		var_dump(__METHOD__);
+		exit;
 		global $wpdb;
 		$imported = 0;
 		$skipped  = 0;
@@ -553,9 +618,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				add_post_meta( $post_id, 'raw_import_data', json_encode( $facebook_raw ) );
 
 				if ( ! empty( $photos ) ) {
-					foreach ( $photos as $photo ) {
-						$this->sideload_media( $photo, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ) );
-					}
+					$this->sideload_media( $photos, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ) );
 				}
 
 				if ( ! empty( $album_photos ) ) {
