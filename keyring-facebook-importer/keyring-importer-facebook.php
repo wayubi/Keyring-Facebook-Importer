@@ -21,7 +21,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,source',
 		// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-08-04T21:44:49&since=2020-08-04'
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments&until=2021-12-31&limit=6'
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments&until=2021-12-31&limit=1'
 	);
 
 	// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-06-01'
@@ -77,7 +77,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					<option value="0"><?php esc_html_e( 'Personal Profile', 'keyring-facebook' ); ?></option>
 					<?php
 
-					if (!empty($fb_page) && is_array($fb_pages)) {
+					if (!empty($fb_pages) && is_array($fb_pages)) {
 						foreach ( $fb_pages as $fb_page ) {
 							printf( '<option value="%1$s"' . selected( $prev_fb_page == $fb_page['id'] ) . '>%2$s</option>', esc_attr( $fb_page['id'] ), esc_html( $fb_page['name'] ) );
 						}
@@ -86,7 +86,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					?>
 				</select>
 			</td>
-		</tr><?php
+		</tr>
+		<tr valign="top">
+			<th scope="row">
+				<label for="include_rts"><?php esc_html_e( 'Comment Trigger', 'keyring-facebook' ); ?></label>
+			</th>
+			<td>
+				<?php
+					$prev_comment_trigger = $this->get_option( 'comment_trigger' );
+				?>
+				<input type="text" class="regular-text" name="comment_trigger" id="comment_trigger" value="<?php echo esc_html( $prev_comment_trigger ); ?>" />
+				<p class="description"><?php _e( 'Initial text at the beginning of the comment that triggers that comment to be imported.', 'keyring' ); ?></p>
+			</td>
+		</tr>
+		<?php
 	}
 
 	function handle_request_options() {
@@ -107,12 +120,13 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$this->step = 'options';
 		} else {
 			$this->set_option( array(
-				'category'       => (int) $_POST['category'],
-				'tags'           => explode( ',', $_POST['tags'] ),
-				'author'         => (int) $_POST['author'],
-				'auto_import'    => $_POST['auto_import'],
-				'facebook_page'  => $_POST['facebook_page'],
-				'fb_post_status' => $_POST['fb_post_status']
+				'category'        => (int) $_POST['category'],
+				'tags'            => explode( ',', $_POST['tags'] ),
+				'author'          => (int) $_POST['author'],
+				'auto_import'     => $_POST['auto_import'],
+				'facebook_page'   => $_POST['facebook_page'],
+				'fb_post_status'  => $_POST['fb_post_status'],
+				'comment_trigger' => $_POST['comment_trigger']
 			) );
 
 			$this->step = 'import';
@@ -295,30 +309,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			}
 
-			// if ($post->type == 'video' && !empty($post->source) && stristr($post->link, 'facebook.com')) {
-			// 	if (!empty($post->object_id)) {
-			// 		$video_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=source');
-			// 		$videos[] = $video_object->source;
-			// 	} else {
-			// 		$videos[] = $post->source;
-			// 	}
-			// }
-			
-			// if (!empty($post->full_picture)) {
-			// 	if ($post->type == 'photo' && !empty($post->object_id)) {
-			// 		$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
-			// 		$images = array();
-			// 		foreach ($photo_object->images as $image) {
-			// 			$images[$image->height] = $image->source;
-			// 		}
-			// 		krsort($images);
-			// 		$image = array_shift($images);
-			// 		$photos[] = $image;
-			// 	} else {
-			// 		$photos[] = $post->full_picture;
-			// 	}
-			// }
-
 			// Prepare post title
 
 			$post_title = '';
@@ -349,24 +339,24 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Inject first image
 			if (!empty($photos)) {
-				$post_content .= '<img src="' . $photos[0] . '" />' . PHP_EOL . PHP_EOL;
+				$post_content .= '<p><img src="' . $photos[0] . '" /></p><br>';
 			}
 
 			// Continue with text
 
 			if (!empty($post->story))
-				$post_content .= addslashes($post->story) . PHP_EOL . PHP_EOL;
+				$post_content .= '<p>' . addslashes($post->story) . '</p><br>';
 
 			if (!empty($post->message))
-				$post_content .= addslashes($post->message) . PHP_EOL . PHP_EOL;
+				$post_content .= '<p>' . addslashes($post->message) . '</p><br>';
 
-			$post_content .= '<!--fb_post-break-->' . PHP_EOL . PHP_EOL;
+			$post_content .= '<p><!--fb_post-break--></p><br>';
 
 			// Inject remaining images
 			foreach ($photos as $index => $photo) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<img src="' . $photo . '" />' . PHP_EOL . PHP_EOL;
+				$post_content .= '<p><img src="' . $photo . '" /></p><br>';
 			}
 
 			// Inject videos
@@ -381,52 +371,54 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
-			// if ($post->type == 'video' && stristr($post->link, 'facebook.com')) {
-			// 	if (count($videos) > 0) {
-			// 		foreach ($videos as $video) {
-			// 			$post_content .= '<!--fb_video_start-->' . $video . '<!--fb_video_end-->';
-			// 		}
-			// 	} else {
-			// 		$post_content .= '<!--fb_video_start-->' . esc_url($post->link) . '<!--fb_video_end-->';
-			// 	}
-			// }
 
-			// if (!empty($post->link) && stristr($post->link, 'youtube.com')) {
-			// 	if (stristr($post->link, 'attribution_link')) {
-			// 		$link = urldecode($post->link);
-			// 		$link = preg_replace('/attribution_link.*?u=\//', '', $link);
-			// 		$post_content .= $link . PHP_EOL . PHP_EOL;
-			// 	} else {
-			// 		$post_content .= $post->link . PHP_EOL . PHP_EOL;
-			// 	}
-			// }
+			$comment_trigger = $this->get_option( 'comment_trigger' );
 
+			if (!empty($comment_trigger)) {
+				if (!empty($post->comments)) {
+					foreach ($post->comments->data as $data) {
+						
+						if (substr($data->message, 0, strlen($comment_trigger)) != $comment_trigger)
+							continue;
 
-			$comments = array();
-			if (!empty($post->comments)) {
-				foreach ($post->comments->data as $data) {
-					if (substr($data->message, 0, 1) != '>')
-						continue;
+						$message = ltrim(substr($data->message, strlen($comment_trigger)));
 
-					$message = ltrim(substr($data->message, 1));
+						if (!empty($message))
+							$post_content .= '<p>' . $message . '</p><br>';
 
-					var_dump('fb-call');
-					$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
-					var_dump('fb-call');
-					$photo_object   = $this->service->request('https://graph.facebook.com/' . $comment_object->attachment->target->id . '?fields=images');
-					$images = array();
-					foreach ($photo_object->images as $image) {
-						$images[$image->height] = $image->source;
+						var_dump('fb-call');
+						$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
+
+						if (empty($comment_object->attachment))
+							continue;
+
+						$attachment = $comment_object->attachment;
+
+						if ($attachment->type == 'photo') {
+							var_dump('fb-call');
+							$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
+							$images = array();
+							foreach ($photo_object->images as $image) {
+								$images[$image->height] = $image->source;
+							}
+							krsort($images);
+							$image = array_shift($images);
+							$photos[] = $image;
+							$post_content .= '<p><img src="' . $image . '" /></p><br>';
+						} else if ($attachment->type == 'video_inline') {
+							var_dump('fb-call');
+							$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
+							$videos[] = $video_object->source;
+							$post_content .= '<p>' . $video_object->source . '</p><br>';
+						} else {
+							$photos[] = $data->media->image->src;
+							$post_content .= '<p><img src="' . $image . '" /></p><br>';
+						}
+
 					}
-					krsort($images);
-					$image = array_shift($images);
-					$photos[] = $image;
-
-					$post_content .= '<p>' . $message . '</p>';
-
-					$post_content .= '<p><img src="' . $image . '" /></p>';
 				}
 			}
+
 
 			$post_content .= '<a href="' . $post->permalink_url . '">Facebook</a>' . PHP_EOL . PHP_EOL;
 
@@ -503,7 +495,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				'videos'
 			);
 
-			var_dump($compact);
+			// echo '<pre>';
+			// print_r($compact);
+			// echo '</pre>';
 
 			$this->posts[] = $compact;
 		}
@@ -864,6 +858,6 @@ add_action( 'init', function() {
 add_filter( 'keyring_facebook_scope', function ( $scopes ) {
 	$scopes[] = 'user_posts';
 	$scopes[] = 'user_photos';
-	// $scopes[] = 'manage_pages';
+	$scopes[] = 'manage_pages';
 	return $scopes;
 } );
