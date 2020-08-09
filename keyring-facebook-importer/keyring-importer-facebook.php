@@ -224,7 +224,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
 
-			if ($post_id) {
+			if ($post_id)
 				continue;
 
 
