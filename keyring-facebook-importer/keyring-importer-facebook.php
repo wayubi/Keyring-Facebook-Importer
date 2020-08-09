@@ -217,15 +217,27 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function extract_posts_from_data_posts( $importdata ) {
-		// Parse/convert everything to WP post structs
+		global $wpdb;
 
 		foreach ( $importdata->data as $post ) {
+			$facebook_id = $post->id;
+
+			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
+
+			if ($post_id) {
+				continue;
+
+
+
 
 			if ($post->type != 'video' && $post->type != 'photo')
 				continue;
 
 			// if ($post->type != 'link')
 			// 	continue;
+
+
+
 
 			// Parse/adjust dates
 			$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post->created_time ) );
@@ -476,7 +488,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
-			$facebook_id    = $post->id;
 			$facebook_raw   = $post;
 
 			// Build the post array, and hang onto it along with the others
