@@ -220,24 +220,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		global $wpdb;
 
 		foreach ( $importdata->data as $post ) {
-			$facebook_id = $post->id;
+
+			$facebook_id = substr($post->id, strpos($post->id, '_') + 1);
 
 			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
 
-			if ($post_id)
-				continue;
+			// Other bits
+			$post_author = $this->get_option( 'author' );
 
+			$post_status = $this->get_option( 'fb_post_status' );
 
-
-
-			if ($post->type != 'video' && $post->type != 'photo')
-				continue;
-
-			// if ($post->type != 'link')
+			// if ($post_id)
 			// 	continue;
 
-
-
+			$facebook_raw = $post;
 
 			// Parse/adjust dates
 			$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post->created_time ) );
@@ -247,6 +243,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			$videos = array();
 			$photos = array();
+
+			echo '<pre>';
+			print_r($post);
+			echo '</pre>';
 
 			if ($post->type == 'photo' || $post->type == 'video') {
 
@@ -319,7 +319,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					}
 				}
 
+			} else if (!empty($post->full_picture)) {
+				$photos[] = $post->full_picture;
 			}
+
+			var_dump($photos);
 
 			// Prepare post title
 
@@ -357,10 +361,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			// Continue with text
 
 			if (!empty($post->story))
-				$post_content .= '<p>' . addslashes($post->story) . '</p><br>';
+				$post_content .= '<p>' . make_clickable(addslashes($post->story)) . '</p><br>';
 
 			if (!empty($post->message))
-				$post_content .= '<p>' . addslashes($post->message) . '</p><br>';
+				$post_content .= '<p>' . make_clickable(addslashes($post->message)) . '</p><br>';
 
 			$post_content .= '<p><!--fb_post-break--></p><br>';
 
@@ -383,6 +387,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
+			// Prepare comments
 
 			$comment_trigger = $this->get_option( 'comment_trigger' );
 
@@ -395,8 +400,15 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 						$message = ltrim(substr($data->message, strlen($comment_trigger)));
 
-						if (!empty($message))
+						if (!empty($message)) {
+							$message = addslashes($message);
+							if (!stristr($post->link, 'youtube.com')) {
+								$message = make_clickable($message);
+							} else {
+								$message = preg_replace('/(https{0,1}:\/\/www.youtube.com)/', '</p><p>$1', $message);
+							}
 							$post_content .= '<p>' . $message . '</p><br>';
+						}
 
 						var_dump('fb-call');
 						$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
@@ -405,6 +417,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							continue;
 
 						$attachment = $comment_object->attachment;
+
+						var_dump($attachment);
 
 						if ($attachment->type == 'photo') {
 							var_dump('fb-call');
@@ -422,7 +436,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 							$videos[] = $video_object->source;
 							$post_content .= '<p>' . $video_object->source . '</p><br>';
-						} else {
+						} else { // continue here
 							$photos[] = $data->media->image->src;
 							$post_content .= '<p><img src="' . $image . '" /></p><br>';
 						}
@@ -431,52 +445,59 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
+			var_dump($photos);
 
-			$post_content .= '<a href="' . $post->permalink_url . '">Facebook</a>' . PHP_EOL . PHP_EOL;
+			$post_content .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">Facebook</a>' . '</p><br>';
+
+			// Prepare link
 
 			if (!empty($post->name) || !empty($post->description)) {
 				$post_content .= '<blockquote>';
 
 				if (!empty($post->name))
-					$post_content .= $post->name . PHP_EOL . PHP_EOL;
+					$post_content .= '<p>' . $post->name . '</p><br>';
 
 				if (!empty($post->description))
-					$post_content .= $post->description . PHP_EOL . PHP_EOL;
+					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p><br>';
 
 				if (!empty($post->link)) {
 					if (stristr($post->link, 'facebook.com')) {
 						if ($post->link != $post->permalink_url) {
-							$post_content .= '<a href="' . $post->link . '">Facebook</a>' . PHP_EOL . PHP_EOL;
+							$post_content .= '<p><a href="' . $post->link . '">Facebook</a></p><br>';
 						}
 					} else if (stristr($post->link, 'youtube.com')) {
-						$post_content .= '<a href="' . $post->link . '">YouTube</a>' . PHP_EOL . PHP_EOL;
+						$post_content .= '<p><a href="' . $post->link . '">YouTube</a></p><br>';
 					} else {
-						$post_content .= $post->link . PHP_EOL . PHP_EOL;
+						$post_content .= '<p>' . make_clickable($post->link) . '</p><br>';
 					}
 				}
 
 				$post_content .= '</blockquote>';
 			}
 
+			// Prepare tags
+
 			$tags = $this->get_option( 'tags' );
 
-			$tags[] = $post->type;
-
-			preg_match_all( '/#([a-zA-Z0-9_\-]+)/', $post->story . ' ' . $post->message, $tag_matches );
-			$tags = array_merge( $tags, $tag_matches[1] );
+			switch ($post->type) {
+				case 'photo':
+					$tags[] = 'images';
+					break;
+				case 'video':
+					$tags[] = 'videos';
+					break;
+				case 'link':
+					$tags[] = 'links';
+					break;
+				default:
+					break;
+			}
 
 			// Apply selected category
 			$post_category = array( $this->get_option( 'category' ) );
 
-			// @todo Import Likes?
-			// $post->likes->data[]->name
-
-			// @todo Import comments?
-			// $post->comments->data[]->from->name and $post->comments->data[]->message and $post->comments->data[]->created_time
-
 			// Other bits
 			$post_author = $this->get_option( 'author' );
-
 			$post_status = $this->get_option( 'fb_post_status' );
 
 			if ( ! $post_status ) {
@@ -488,9 +509,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
-			$facebook_raw   = $post;
-
-			// Build the post array, and hang onto it along with the others
 			$compact = compact(
 				'post_author',
 				'post_date',
@@ -506,9 +524,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				'videos'
 			);
 
-			// echo '<pre>';
-			// print_r($compact);
-			// echo '</pre>';
+			var_dump($compact);
 
 			$this->posts[] = $compact;
 		}
