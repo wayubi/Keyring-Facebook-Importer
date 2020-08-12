@@ -393,7 +393,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						$message = ltrim(substr($data->message, strlen($comment_trigger)));
 
 						if (!empty($message)) {
-							$message = preg_replace('/\n\n', '</p><p>', $message);
+							$message = preg_replace('/\n\n/', '</p><p>', $message);
 							if (!stristr($message, 'youtube.com') && !stristr($message, 'twitter.com')) {
 								$message = make_clickable($message);
 							}
