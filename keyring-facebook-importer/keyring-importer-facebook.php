@@ -393,11 +393,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						$message = ltrim(substr($data->message, strlen($comment_trigger)));
 
 						if (!empty($message)) {
-							$message = addslashes($message);
-							if (!stristr($message, 'youtube.com')) {
+							$message = preg_replace('/\n\n', '</p><p>', $message);
+							if (!stristr($message, 'youtube.com') && !stristr($message, 'twitter.com')) {
 								$message = make_clickable($message);
-							} else {
-								$message = preg_replace('/(https{0,1}:\/\/www.youtube.com)/', '</p><p>$1', $message);
 							}
 							$post_content .= '<p>' . $message . '</p><br>';
 						}
@@ -423,9 +421,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 							$videos[] = $video_object->source;
 							$post_content .= '<p>' . $video_object->source . '</p><br>';
-						} else { // continue here
-							$photos[] = $data->media->image->src;
-							$post_content .= '<p><img src="' . $image . '" /></p><br>';
 						}
 
 					}
@@ -766,7 +761,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function retrieve_pages() {
-		var_dump('fb-call');
 		$api_url = "https://graph.facebook.com/me/accounts?fields=id,name,category";
 
 		$pages = array();
@@ -791,7 +785,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 	private function retrieve_album_photos( $album_id, $since = null ) {
 		// Get photos
-		var_dump('fb-call');
 		$api_url = "https://graph.facebook.com/" . $album_id . "/photos?fields=id,name,link,images,created_time,updated_time";
 
 		$photos = array();
