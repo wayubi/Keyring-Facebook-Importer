@@ -9,7 +9,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	const SLUG              = 'facebook';    // e.g. 'twitter' (should match a service in Keyring)
 	const LABEL             = 'Facebook';    // e.g. 'Twitter'
 	const KEYRING_SERVICE   = 'Keyring_Service_Facebook';    // Full class name of the Keyring_Service this importer requires
-	const REQUESTS_PER_LOAD = 3;     // How many remote requests should be made before reloading the page?
+	const REQUESTS_PER_LOAD = 1;     // How many remote requests should be made before reloading the page?
+	const REQUEST_TIMEOUT   = 600; // Number of seconds to wait before another request
 
 	var $api_endpoints = array(
 		// '/albums',
@@ -20,8 +21,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	var $api_endpoint_fields = array(
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,source',
-		// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-08-04T21:44:49&since=2020-08-04'
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments&until=2021-12-31&limit=1'
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments'
 	);
 
 	// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-06-01'
@@ -141,8 +141,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
 
-		return $url;
-
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
 			$latest = get_posts( array(
@@ -169,6 +167,67 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 
 		return $url;
+	}
+
+	/**
+	 * Grab a chunk of data from the remote service and process it into posts, and handle actually importing as well.
+	 * Keeps track of 'state' in the DB.
+	 */
+	function import() {
+		defined( 'WP_IMPORTING' ) or define( 'WP_IMPORTING', true );
+		do_action( 'import_start' );
+		$num = 0;
+		$this->header();
+		$stop_after_import_requests = apply_filters( 'keyring_importer_stop_after_import_requests', false );
+
+		echo '<p>' . __( 'Importing Posts...', 'keyring' ) . '</p>';
+		echo '<ol>';
+		while ( ! $this->finished && $num < static::REQUESTS_PER_LOAD ) {
+			$data = $this->make_request();
+			if ( Keyring_Util::is_error( $data ) ) {
+				return $data;
+			}
+
+			$result = $this->extract_posts_from_data( $data );
+			if ( Keyring_Util::is_error( $result ) ) {
+				return $result;
+			}
+
+			// Use this filter to modify any/all posts before they are actually inserted as posts
+			$this->posts = apply_filters( 'keyring_importer_posts_pre_insert', $this->posts, $this->service->get_name() );
+
+			$result = $this->insert_posts();
+			if ( Keyring_Util::is_error( $result ) ) {
+				return $result;
+			} else {
+				echo '<li>' . sprintf( __( 'Imported %d posts in this batch', 'keyring' ), $result['imported'] ) . ( $result['skipped'] ? sprintf( __( ' (skipped %d that looked like duplicates).', 'keyring' ), $result['skipped'] ) : '.' ) . '</li>';
+				flush();
+				$this->set_option( 'imported', ( $this->get_option( 'imported' ) + $result['imported'] ) );
+			}
+
+			if ( $stop_after_import_requests && ( $this->get_option( 'imported' ) >= $stop_after_import_requests ) ) {
+				$this->finished = true;
+				break; // Break to avoid incrementing `page`
+			}
+
+			// Keep track of which "page" we're up to
+			$this->set_option( 'page', $this->get_option( 'page' ) + 1 );
+
+			// Local (per-page-load) counter
+			$num++;
+		}
+		echo '</ol>';
+		$this->footer();
+
+		if ( $this->finished ) {
+			$this->importer_goto( 'done', 1 );
+		} else {
+			$this->importer_goto( 'import', static::REQUEST_TIMEOUT );
+		}
+
+		do_action( 'import_end' );
+
+		return true;
 	}
 
 	function extract_posts_from_data( $raw ) {
