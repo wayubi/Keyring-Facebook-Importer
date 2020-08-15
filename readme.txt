@@ -1,5 +1,5 @@
 === Keyring Facebook Importer ===
-Contributors: cfinke, joshuairl
+Contributors: cfinke, joshuairl, wayubi
 Tags: facebook, import, data portability, keyring
 Requires at least: 3.6
 Tested up to: 3.8.3
