@@ -397,6 +397,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					$post_title .= '...';
 			}
 
+			$post_title = addslashes($post_title);
+
 			// Prepare post body
 
 			$post_content = '';
@@ -456,7 +458,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							if (!stristr($message, 'youtube.com') && !stristr($message, 'twitter.com')) {
 								$message = make_clickable($message);
 							}
-							$post_content .= '<p>' . $message . '</p><br>';
+							$post_content .= '<p>' . addslashes($message) . '</p><br>';
 						}
 
 						$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
@@ -494,7 +496,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_content .= '<blockquote>';
 
 				if (!empty($post->name))
-					$post_content .= '<p>' . $post->name . '</p><br>';
+					$post_content .= '<p>' . addslashes($post->name) . '</p><br>';
 
 				if (!empty($post->description))
 					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p><br>';
