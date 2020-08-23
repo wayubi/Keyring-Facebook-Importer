@@ -13,9 +13,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	const REQUEST_TIMEOUT   = 600; // Number of seconds to wait before another request
 
 	var $api_endpoints = array(
-		// '/albums',
+		'/albums',
 		// '/photos',
-		'/posts'
+		// '/posts'
 	);
 
 	var $api_endpoint_fields = array(
@@ -580,6 +580,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		global $wpdb;
 
 		foreach ( $importdata->data as $album ) {
+
+			if ($album->name != 'Cover Photos')
+				continue;
+
 			$facebook_id = $album->id;
 
 			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
@@ -604,7 +608,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				// Create a post for this gallery.
 				$post = array();
 				$post['post_title'] = $album->name;
-				$post['post_content'] = '[gallery type="rectangular"]';
+				$post['post_content'] = '[gallery order="DESC" orderby="date"]';
 				$post['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $album->created_time ) );
 				$post['post_date'] = get_date_from_gmt( $post['post_date_gmt'] );
 				$post['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $album->updated_time ) );
@@ -798,7 +802,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 	}
 
-	private function sideload_album_photo( $file, $post_id, $desc = '' ) {
+	private function sideload_album_photo( $file, $post_id, $desc = '', $post_date = null, $post_date_gmt = null ) {
 		if ( !function_exists( 'media_handle_sideload' ) )
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 		if ( !function_exists( 'download_url' ) )
@@ -819,8 +823,14 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				@unlink($file_array['tmp_name']);
 				$file_array['tmp_name'] = '';
 		}
+
+		$post_data = compact(
+			'post_date',
+			'post_date_gmt'
+		);
+
 		// do the validation and storage stuff
-		$id = media_handle_sideload( $file_array, $post_id, $desc );
+		$id = $this->media_handle_sideload( $file_array, $post_id, $desc, $post_data, $time );
 		/* End copy/paste */
 
 		@unlink($file_array['tmp_name']);
@@ -881,9 +891,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$photo['facebook_id'] = $photo_data->id;
 
 			$photo['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo_data->created_time ) );
-			$photo['post_date'] = get_date_from_gmt( $post['post_date_gmt'] );
+			$photo['post_date'] = get_date_from_gmt( $photo['post_date_gmt'] );
 			$photo['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo_data->updated_time ) );
-			$photo['post_modified'] = get_date_from_gmt( $post['post_modified_gmt'] );
+			$photo['post_modified'] = get_date_from_gmt( $photo['post_modified_gmt'] );
 
 			$photos[] = $photo;
 		}
@@ -900,7 +910,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		$photo_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $photo['facebook_id'] ) );
 
 		if ( ! $photo_id ) {
-			$photo_id = $this->sideload_album_photo( $photo['src'], $album_id, $photo['post_title'] );
+			$photo_id = $this->sideload_album_photo( $photo['src'], $album_id, $photo['post_title'], $photo['post_date'], $photo['post_date_gmt'] );
 
 			add_post_meta( $photo_id, 'facebook_id', $photo['facebook_id'] );
 			add_post_meta( $photo_id, 'raw_import_data', json_encode( $photo['facebook_raw'] ) );
@@ -912,6 +922,76 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 
 		return $photo_id;
+	}
+
+	private function media_handle_sideload( $file_array, $post_id = 0, $desc = null, $post_data ) {
+		$overrides = array( 'test_form' => false );
+
+		$time = $post_data['post_date'];
+		$post = get_post( $post_id );
+
+		if (empty($time)) {
+			$time = current_time( 'mysql' );
+
+			if ( $post ) {
+				if ( substr( $post->post_date, 0, 4 ) > 0 ) {
+					$time = $post->post_date;
+				}
+			}
+		}
+
+		$file = wp_handle_sideload( $file_array, $overrides, $time );
+
+		if ( isset( $file['error'] ) ) {
+			return new WP_Error( 'upload_error', $file['error'] );
+		}
+
+		$url     = $file['url'];
+		$type    = $file['type'];
+		$file    = $file['file'];
+		$title   = preg_replace( '/\.[^.]+$/', '', wp_basename( $file ) );
+		$content = '';
+
+		// Use image exif/iptc data for title and caption defaults if possible.
+		$image_meta = wp_read_image_metadata( $file );
+
+		if ( $image_meta ) {
+			if ( trim( $image_meta['title'] ) && ! is_numeric( sanitize_title( $image_meta['title'] ) ) ) {
+				$title = $image_meta['title'];
+			}
+
+			if ( trim( $image_meta['caption'] ) ) {
+				$content = $image_meta['caption'];
+			}
+		}
+
+		if ( isset( $desc ) ) {
+			$title = $desc;
+		}
+
+		// Construct the attachment array.
+		$attachment = array_merge(
+			array(
+				'post_mime_type' => $type,
+				'guid'           => $url,
+				'post_parent'    => $post_id,
+				'post_title'     => $title,
+				'post_content'   => $content
+			),
+			$post_data
+		);
+
+		// This should never be set as it would then overwrite an existing attachment.
+		unset( $attachment['ID'] );
+
+		// Save the attachment metadata.
+		$attachment_id = wp_insert_attachment( $attachment, $file, $post_id, true );
+
+		if ( ! is_wp_error( $attachment_id ) ) {
+			wp_update_attachment_metadata( $attachment_id, wp_generate_attachment_metadata( $attachment_id, $file ) );
+		}
+
+		return $attachment_id;
 	}
 }
 
