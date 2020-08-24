@@ -390,18 +390,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			else
 				$post_title = 'Untitled';
 
-			$message = preg_split('/\n/', $post_title);
-			$title_words = explode(' ', strip_tags($message[0]));
-			$post_title  = implode(' ', array_slice($title_words, 0, 9));
-
-			$post_title = rtrim($post_title, ',');
-
-			if (count($title_words) > 9) {
-				if (!in_array(substr($post_title, -1), array('.', '?', '!', ',', ';', ':')))
-					$post_title .= '...';
-			}
-
-			$post_title = addslashes($post_title);
+			$post_title = $this->prepare_post_title($post_title);
 
 			// Prepare post body
 
@@ -581,7 +570,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		foreach ( $importdata->data as $album ) {
 
-			if ($album->name != 'Cover Photos')
+			if ($album->name != 'Instagram Photos')
 				continue;
 
 			$facebook_id = $album->id;
@@ -615,7 +604,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post['post_modified'] = get_date_from_gmt( $post['post_modified_gmt'] );
 				$post['post_type'] = 'post';
 				$post['post_author'] = $this->get_option( 'author' );
-				$post['tags'] = $this->get_option( 'tags' );
+
+				$tags = $this->get_option( 'tags' );
+				$tags[] = 'albums';
+				$post['tags'] = $tags;
+
 				$post['post_category'] = array( $this->get_option( 'category' ) );
 				$post['post_status'] = $this->get_option( 'fb_post_status' );
 
@@ -824,13 +817,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$file_array['tmp_name'] = '';
 		}
 
+		$post_author  = $this->get_option( 'author' );
+		$post_title   = $this->prepare_post_title($desc);
+		$post_content = $desc;
+
 		$post_data = compact(
 			'post_date',
-			'post_date_gmt'
+			'post_date_gmt',
+			'post_author',
+			'post_title',
+			'post_content'
 		);
 
 		// do the validation and storage stuff
-		$id = $this->media_handle_sideload( $file_array, $post_id, $desc, $post_data, $time );
+		$id = $this->media_handle_sideload( $file_array, $post_id, $desc, $post_data );
 		/* End copy/paste */
 
 		@unlink($file_array['tmp_name']);
@@ -992,6 +992,24 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 
 		return $attachment_id;
+	}
+
+	private function prepare_post_title($post_title) {
+
+		$message = preg_split('/\n/', $post_title);
+		$title_words = explode(' ', strip_tags($message[0]));
+		$post_title  = implode(' ', array_slice($title_words, 0, 9));
+
+		$post_title = rtrim($post_title, ',');
+
+		if (count($title_words) > 9) {
+			if (!in_array(substr($post_title, -1), array('.', '?', '!', ',', ';', ':')))
+				$post_title .= '...';
+		}
+
+		$post_title = addslashes($post_title);
+
+		return $post_title;
 	}
 }
 
