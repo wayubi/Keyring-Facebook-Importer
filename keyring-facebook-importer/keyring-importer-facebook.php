@@ -570,7 +570,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		foreach ( $importdata->data as $album ) {
 
-			if ($album->name != 'Instagram Photos')
+			if ($album->name != 'Cover Photos')
 				continue;
 
 			$facebook_id = $album->id;
@@ -884,7 +884,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		foreach ( $album_data->data as $photo_data ) {
 
 			$photo = array();
-			$photo['post_title'] = $photo_data->name;
+			$photo['post_title'] = !empty($photo_data->name) ? $photo_data->name : 'Untitled';
 			$photo['src'] = $photo_data->images[0]->source;
 
 			$photo['facebook_raw'] = $photo_data;
@@ -917,7 +917,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 		else {
 			$photo_post = get_post( $photo_id );
-			$photo_post->post_parent = $album_id;
+			$photo_post->post_title    = $photo['post_title'];
+			$photo_post->post_date     = $photo['post_date'];
+			$photo_post->post_date_gmt = $photo['post_date_gmt'];
+			$photo_post->post_parent   = $album_id;
 			wp_update_post( (array) $photo_post );
 		}
 
