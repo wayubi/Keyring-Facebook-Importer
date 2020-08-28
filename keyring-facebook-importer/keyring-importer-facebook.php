@@ -909,19 +909,12 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		
 		$photo_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $photo['facebook_id'] ) );
 
-		if ( ! $photo_id ) {
+		if (is_null($photo_id)) {
+			$wpdb->query($wpdb->prepare("INSERT INTO {$wpdb->postmeta} (meta_key, meta_value) VALUES (%s, %s)", 'facebook_id', $photo['facebook_id']));
 			$photo_id = $this->sideload_album_photo( $photo['src'], $album_id, $photo['post_title'], $photo['post_date'], $photo['post_date_gmt'] );
 
-			add_post_meta( $photo_id, 'facebook_id', $photo['facebook_id'] );
+			$wpdb->query($wpdb->prepare("UPDATE {$wpdb->postmeta} SET post_id = %d WHERE meta_key = %s AND meta_value = %s", $photo_id, 'facebook_id', $photo['facebook_id']));
 			add_post_meta( $photo_id, 'raw_import_data', json_encode( $photo['facebook_raw'] ) );
-		}
-		else {
-			$photo_post = get_post( $photo_id );
-			$photo_post->post_title    = $photo['post_title'];
-			$photo_post->post_date     = $photo['post_date'];
-			$photo_post->post_date_gmt = $photo['post_date_gmt'];
-			$photo_post->post_parent   = $album_id;
-			wp_update_post( (array) $photo_post );
 		}
 
 		return $photo_id;
