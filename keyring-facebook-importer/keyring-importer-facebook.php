@@ -570,9 +570,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		foreach ( $importdata->data as $album ) {
 
-			if ($album->name != 'Cover Photos')
-				continue;
-
 			$facebook_id = $album->id;
 
 			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
