@@ -44,6 +44,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		return $rv;
 	}
 
+	function log($s) {
+		file_put_contents(static::LOG_PATH, '[' . date('Y-m-d H:i:s') . '] ' . $s . PHP_EOL, FILE_APPEND);
+	}
+
 	function custom_options() {
 		?>
 		<tr valign="top">
