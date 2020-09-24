@@ -14,14 +14,14 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	const LOG_PATH          = '/tmp/log.txt';
 
 	var $api_endpoints = array(
-		'/albums',
+		// '/albums',
 		// '/photos',
-		// '/posts'
+		'/posts'
 	);
 
 	var $api_endpoint_fields = array(
 		'/albums' => 'id,name,created_time,updated_time,privacy',
-		'/photos' => 'id,name,created_time,updated_time,source',
+		'/photos' => 'id,name,created_time,updated_time,images',
 		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments'
 	);
 
@@ -312,7 +312,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								if ($s_data->type == 'photo') {
 									var_dump(__METHOD__ . ': $this->service->request');
 									$photo_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=images');
-									$photos[] = $this->fetchHighResImage($photo_object);
+									$photos[] = $this->fetchHighResImage($photo_object->images);
 								} else if ($s_data->type == 'video') {
 									var_dump(__METHOD__ . ': $this->service->request');
 									$video_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=source,thumbnails');
@@ -335,7 +335,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							if ($data->type == 'photo') {
 								var_dump(__METHOD__ . ': $this->service->request');
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
-								$photos[] = $this->fetchHighResImage($photo_object);
+								$photos[] = $this->fetchHighResImage($photo_object->images);
 							} else if ($data->type == 'video_inline' && !empty($data->media->source)) {
 								var_dump(__METHOD__ . ': $this->service->request');
 								$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source,thumbnails');
@@ -454,7 +454,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						if ($attachment->type == 'photo') {
 							var_dump(__METHOD__ . ': $this->service->request');
 							$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
-							$photos[] = $this->fetchHighResImage($photo_object);
+							$photos[] = $this->fetchHighResImage($photo_object->images);
 							$post_content .= '<p><img src="' . $image . '" /></p><br>';
 						} else if ($attachment->type == 'video_inline') {
 							var_dump(__METHOD__ . ': $this->service->request');
