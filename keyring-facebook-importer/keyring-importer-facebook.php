@@ -615,26 +615,17 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		global $wpdb;
 
 		foreach ( $importdata->data as $photo ) {
+
 			$facebook_id = $photo->id;
 
-			$photo_src = '';
+			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
 
-			$post_ids = $wpdb->get_results( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
-
-			if ( ! empty( $post_id ) ) {
-				foreach ( $post_ids as $post_id ) {
-					$post = get_post( $post_id );
-
-					if ( $post->post_type == 'post' )
-						continue 2;
-					else if ( $post->post_type == 'attachment' )
-						$photo_src = wp_get_attachment_image_src( $post_id, 'large' );
-				}
-			}
+			if ($post_id)
+				continue;
 
 			// Create a post and upload the photo for this photo.
 			$post = array();
-			$post['post_title'] = isset( $photo->name ) ? $photo->name : '';
+			$post['post_title'] = $this->prepare_post_title(!empty($photo->name) ? $photo->name : 'Untitled');
 			$post['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo->created_time ) );
 			$post['post_date'] = get_date_from_gmt( $post['post_date_gmt'] );
 			$post['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo->updated_time ) );
@@ -657,12 +648,19 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$post['facebook_id'] = $photo->id;
 			$post['facebook_raw'] = $photo;
 
-			if ( $photo_src ) {
-				$post['post_content'] = $photo_src;
-			}
-			else {
-				$post['photos'] = $this->fetchHighResImage($photo->images);
-			}
+			$post['photos'] = $this->fetchHighResImage($photo->images);
+
+			// Prepare post body
+
+			$post['post_content'] = '';
+
+			if (!empty($post['photos']))
+				$post['post_content'] .= '<p><img src="' . $post['photos'] . '" /></p><br>';
+
+			if (!empty($photo->name))
+				$post['post_content'] .= '<p>' . make_clickable($photo->name) . '</p><br>';
+
+			$post['post_content'] .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">Facebook</a>' . '</p><br>';
 
 			$this->posts[] = $post;
 		}
