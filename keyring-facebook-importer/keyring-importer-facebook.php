@@ -145,7 +145,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
-		return $url;
 
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -912,14 +911,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		$photo_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $photo['facebook_id'] ) );
 
 		if (is_null($photo_id)) {
-			$this->log(__METHOD__ . ': is_null');
 			$wpdb->query($wpdb->prepare("INSERT INTO {$wpdb->postmeta} (meta_key, meta_value) VALUES (%s, %s)", 'facebook_id', $photo['facebook_id']));
 			$photo_id = $this->sideload_album_photo( $photo['src'], $album_id, $photo['post_title'], $photo['post_date'], $photo['post_date_gmt'] );
 
 			$wpdb->query($wpdb->prepare("UPDATE {$wpdb->postmeta} SET post_id = %d WHERE meta_key = %s AND meta_value = %s", $photo_id, 'facebook_id', $photo['facebook_id']));
 			add_post_meta( $photo_id, 'raw_import_data', json_encode( $photo['facebook_raw'] ) );
-		} else {
-			$this->log(__METHOD__ . ': not is_null');
 		}
 
 		return $photo_id;
