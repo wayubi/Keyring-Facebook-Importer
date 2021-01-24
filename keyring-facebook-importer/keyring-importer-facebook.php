@@ -14,9 +14,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	const LOG_PATH          = '/tmp/log.txt';
 
 	var $api_endpoints = array(
-		// '/albums',
+		'/albums',
 		// '/photos',
-		'/posts'
+		// '/posts'
 	);
 
 	var $api_endpoint_fields = array(
@@ -31,6 +31,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	var $endpoint_prefix = null;
 
 	function __construct() {
+		$this->log(__METHOD__);
 		$rv = parent::__construct();
 
 		if ( $this->get_option( 'facebook_page', '' ) ) {
@@ -46,6 +47,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	function custom_options() {
+		$this->log(__METHOD__);
 		?>
 		<tr valign="top">
 			<th scope="row">
@@ -104,6 +106,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	function handle_request_options() {
+		$this->log(__METHOD__);
 		// Validate options and store them so they can be used in auto-imports
 		if ( empty( $_POST['category'] ) || !ctype_digit( $_POST['category'] ) )
 			$this->error( __( "Make sure you select a valid category to import your statuses into." ) );
@@ -135,12 +138,14 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	function build_request_url() {
+		$this->log(__METHOD__);
 
 		$endpoint_prefix_length = strlen($this->endpoint_prefix);
 		$endpoint = substr($this->current_endpoint, $endpoint_prefix_length);
 
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
+		return $url;
 
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -175,6 +180,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	 * Keeps track of 'state' in the DB.
 	 */
 	function import() {
+		$this->log(__METHOD__);
 		defined( 'WP_IMPORTING' ) or define( 'WP_IMPORTING', true );
 		do_action( 'import_start' );
 		$num = 0;
@@ -232,6 +238,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	function extract_posts_from_data( $raw ) {
+		$this->log(__METHOD__);
 		global $wpdb;
 
 		$importdata = $raw;
@@ -276,6 +283,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function extract_posts_from_data_posts( $importdata ) {
+		$this->log(__METHOD__);
 		global $wpdb;
 
 		foreach ( $importdata->data as $post ) {
@@ -549,6 +557,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function extract_posts_from_data_albums( $importdata ) {
+		$this->log(__METHOD__);
 		global $wpdb;
 
 		foreach ( $importdata->data as $album ) {
@@ -612,6 +621,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function extract_posts_from_data_photos( $importdata ) {
+		$this->log(__METHOD__);
 		global $wpdb;
 
 		foreach ( $importdata->data as $photo ) {
@@ -667,6 +677,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	function insert_posts() {
+		$this->log(__METHOD__);
 		global $wpdb;
 		$imported = 0;
 		$skipped  = 0;
@@ -749,11 +760,13 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function rotate_endpoint() {
+		$this->log(__METHOD__);
 		$this->set_option( 'endpoint_index', ( ( $this->get_option( 'endpoint_index', 0 ) + 1 ) % count( $this->api_endpoints ) ) );
 		$this->current_endpoint = $this->endpoint_prefix . $this->api_endpoints[ $this->get_option( 'endpoint_index' ) ];
 	}
 
 	function sideload_video( $url, $post_id ) {
+		$this->log(__METHOD__);
 		$file = array();
 		$file['tmp_name'] = download_url( $url );
 		if ( is_wp_error( $file['tmp_name'] ) ) {
@@ -774,6 +787,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function sideload_album_photo( $file, $post_id, $desc = '', $post_date = null, $post_date_gmt = null ) {
+		$this->log(__METHOD__);
 		if ( !function_exists( 'media_handle_sideload' ) )
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 		if ( !function_exists( 'download_url' ) )
@@ -817,6 +831,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function retrieve_pages() {
+		$this->log(__METHOD__);
 		$api_url = "https://graph.facebook.com/me/accounts?fields=id,name,category";
 
 		$pages = array();
@@ -841,18 +856,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function retrieve_album_photos( $album_id, $since = null ) {
+		$this->log(__METHOD__);
 		// Get photos
 		$api_url = "https://graph.facebook.com/" . $album_id . "/photos?fields=id,name,link,images,created_time,updated_time";
 
 		$photos = array();
 
-		while ( $api_url = $this->_retrieve_album_photos( $api_url, $photos ) );
+		while ( $api_url = $this->_retrieve_album_photos( $api_url, $photos, $since ) );
 
 		return $photos;
 	}
 
-	private function _retrieve_album_photos( $api_url, &$photos ) {
-		var_dump(__METHOD__ . ': $this->service->request');
+	private function _retrieve_album_photos( $api_url, &$photos, $since = null ) {
+		$this->log(__METHOD__);
+
 		$album_data = $this->service->request( $api_url, array( 'method' => $this->request_method, 'timeout' => 10 ) );
 
 		if ( empty( $album_data ) || empty( $album_data->data ) ) {
@@ -861,19 +878,25 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		foreach ( $album_data->data as $photo_data ) {
 
-			$photo = array();
-			$photo['post_title'] = !empty($photo_data->name) ? $photo_data->name : 'Untitled';
-			$photo['src'] = $photo_data->images[0]->source;
+			if ( $since < strtotime( $photo_data->updated_time ) ) {
 
-			$photo['facebook_raw'] = $photo_data;
-			$photo['facebook_id'] = $photo_data->id;
+				$photo = array();
+				$photo['post_title'] = !empty($photo_data->name) ? $photo_data->name : 'Untitled';
+				$photo['src'] = $photo_data->images[0]->source;
 
-			$photo['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo_data->created_time ) );
-			$photo['post_date'] = get_date_from_gmt( $photo['post_date_gmt'] );
-			$photo['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo_data->updated_time ) );
-			$photo['post_modified'] = get_date_from_gmt( $photo['post_modified_gmt'] );
+				$photo['facebook_raw'] = $photo_data;
+				$photo['facebook_id'] = $photo_data->id;
 
-			$photos[] = $photo;
+				$photo['post_date_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo_data->created_time ) );
+				$photo['post_date'] = get_date_from_gmt( $photo['post_date_gmt'] );
+				$photo['post_modified_gmt'] = gmdate( 'Y-m-d H:i:s', strtotime( $photo_data->updated_time ) );
+				$photo['post_modified'] = get_date_from_gmt( $photo['post_modified_gmt'] );
+
+				$photos[] = $photo;
+				
+			} else {
+				return false;
+			}
 		}
 
 		if ( isset( $album_data->paging ) && ! empty( $album_data->paging->next ) )
@@ -883,22 +906,27 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function sideload_photo_to_album( $photo, $album_id ) {
+		$this->log(__METHOD__);
 		global $wpdb;
 		
 		$photo_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $photo['facebook_id'] ) );
 
 		if (is_null($photo_id)) {
+			$this->log(__METHOD__ . ': is_null');
 			$wpdb->query($wpdb->prepare("INSERT INTO {$wpdb->postmeta} (meta_key, meta_value) VALUES (%s, %s)", 'facebook_id', $photo['facebook_id']));
 			$photo_id = $this->sideload_album_photo( $photo['src'], $album_id, $photo['post_title'], $photo['post_date'], $photo['post_date_gmt'] );
 
 			$wpdb->query($wpdb->prepare("UPDATE {$wpdb->postmeta} SET post_id = %d WHERE meta_key = %s AND meta_value = %s", $photo_id, 'facebook_id', $photo['facebook_id']));
 			add_post_meta( $photo_id, 'raw_import_data', json_encode( $photo['facebook_raw'] ) );
+		} else {
+			$this->log(__METHOD__ . ': not is_null');
 		}
 
 		return $photo_id;
 	}
 
 	private function media_handle_sideload( $file_array, $post_id = 0, $desc = null, $post_data ) {
+		$this->log(__METHOD__);
 		$overrides = array( 'test_form' => false );
 
 		$time = $post_data['post_date'];
@@ -969,6 +997,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	private function prepare_post_title($post_title) {
+		$this->log(__METHOD__);
 
 		$message = preg_split('/\n/', $post_title);
 		$title_words = explode(' ', strip_tags($message[0]));
