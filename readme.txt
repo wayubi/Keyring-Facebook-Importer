@@ -1,4 +1,5 @@
 === Keyring Facebook Importer ===
+
 Contributors: cfinke, joshuairl, wayubi
 License: GPLv2 or later
 
