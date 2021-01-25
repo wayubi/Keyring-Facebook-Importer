@@ -392,7 +392,32 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Inject first image
 			if (!empty($photos)) {
-				$post_content .= '<p><img src="' . $photos[0] . '" /></p><br>';
+				if (!empty($videos) || stristr($post->link, 'youtube.com')) {
+					$post_content .= '<p class="vthumb"><img src="' . $photos[0] . '" /></p><br>';
+				} else {
+					$post_content .= '<p><img src="' . $photos[0] . '" /></p><br>';
+				}
+			}
+
+			// Insert first video
+			if (!empty($videos)) { // Embedded
+				$post_content .= '<p>' . $videos[0] . '</p><br>';
+			} else if (stristr($post->link, 'youtube.com')) { // YouTube
+				$post_content .= '<p>' . $post->link . '</p><br>';
+			}
+
+			// Inject remaining images
+			foreach ($photos as $index => $photo) {
+				if ($index == 0)
+					continue;
+				$post_content .= '<p><img src="' . $photo . '" /></p><br>';
+			}
+
+			// Inject remaining videos
+			foreach ($videos as $index => $video) {
+				if ($index == 0)
+					continue;
+				$post_content .= '<p>' . $video . '</p><br>';
 			}
 
 			// Continue with text
@@ -404,27 +429,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$message = $post->message;
 				$message = preg_replace('/(https{0,1}:\/\/www.facebook.com\/).+?\/posts\/(\d+)/', '$1$2', $message);
 				$post_content .= '<p>' . make_clickable(addslashes($message)) . '</p><br>';
-			}
-
-			// Inject remaining images
-			foreach ($photos as $index => $photo) {
-				if ($index == 0)
-					continue;
-				$post_content .= '<p><img src="' . $photo . '" /></p><br>';
-			}
-
-			// Insert first video
-			if (!empty($videos)) { // Embedded
-				$post_content .= '<p>' . $videos[0] . '</p><br>';
-			} else if (stristr($post->link, 'youtube.com')) { // YouTube
-				$post_content .= '<p>' . $post->link . '</p><br>';
-			}
-
-			// Inject remaining videos
-			foreach ($videos as $index => $video) {
-				if ($index == 0)
-					continue;
-				$post_content .= '<p>' . $video . '</p><br>';
 			}
 
 			// Prepare comments
