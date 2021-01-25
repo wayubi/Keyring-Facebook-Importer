@@ -14,9 +14,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	const LOG_PATH          = '/tmp/log.txt';
 
 	var $api_endpoints = array(
-		'/albums',
+		// '/albums',
 		// '/photos',
-		// '/posts'
+		'/posts'
 	);
 
 	var $api_endpoint_fields = array(
@@ -145,6 +145,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
+		// var_dump($url);
+		// return $url;
 
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -408,8 +410,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_content .= '<p>' . make_clickable(addslashes($message)) . '</p><br>';
 			}
 
-			$post_content .= '<p><!--fb_post-break--></p><br>';
-
 			// Inject remaining images
 			foreach ($photos as $index => $photo) {
 				if ($index == 0)
@@ -440,8 +440,26 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						if (substr($data->message, 0, strlen($comment_trigger)) != $comment_trigger)
 							continue;
 
-						$message = ltrim(substr($data->message, strlen($comment_trigger)));
+						var_dump(__METHOD__ . ': $this->service->request');
+						$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
+						if (!empty($comment_object->attachment)) {
+							$attachment = $comment_object->attachment;
 
+							if ($attachment->type == 'photo') {
+								var_dump(__METHOD__ . ': $this->service->request');
+								$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
+								$image = $this->fetchHighResImage($photo_object->images);
+								$photos[] = $image;
+								$post_content .= '<p><img src="' . $image . '" /></p><br>';
+							} else if ($attachment->type == 'video_inline') {
+								var_dump(__METHOD__ . ': $this->service->request');
+								$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
+								$videos[] = $video_object->source;
+								$post_content .= '<p>' . $video_object->source . '</p><br>';
+							}
+						}
+
+						$message = ltrim(substr($data->message, strlen($comment_trigger)));
 						if (!empty($message)) {
 							$message = preg_replace('/\n\n/', '</p><p>', $message);
 							if (!stristr($message, 'youtube.com') && !stristr($message, 'twitter.com')) {
@@ -449,32 +467,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							}
 							$post_content .= '<p>' . addslashes($message) . '</p><br>';
 						}
-
-						var_dump(__METHOD__ . ': $this->service->request');
-						$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
-
-						if (empty($comment_object->attachment))
-							continue;
-
-						$attachment = $comment_object->attachment;
-
-						if ($attachment->type == 'photo') {
-							var_dump(__METHOD__ . ': $this->service->request');
-							$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
-							$photos[] = $this->fetchHighResImage($photo_object->images);
-							$post_content .= '<p><img src="' . $image . '" /></p><br>';
-						} else if ($attachment->type == 'video_inline') {
-							var_dump(__METHOD__ . ': $this->service->request');
-							$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
-							$videos[] = $video_object->source;
-							$post_content .= '<p>' . $video_object->source . '</p><br>';
-						}
-
 					}
 				}
 			}
 
-			$post_content .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">Facebook</a>' . '</p><br>';
+			$post_content .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">^</a>' . '</p><br>';
 
 			// Prepare link
 
@@ -490,10 +487,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if (!empty($post->link)) {
 					if (stristr($post->link, 'facebook.com')) {
 						if ($post->link != $post->permalink_url) {
-							$post_content .= '<p><a href="' . $post->link . '">Facebook</a></p><br>';
+							$post_content .= '<p><a href="' . $post->link . '">^</a></p><br>';
 						}
 					} else if (stristr($post->link, 'youtube.com')) {
-						$post_content .= '<p><a href="' . $post->link . '">YouTube</a></p><br>';
+						$post_content .= '<p><a href="' . $post->link . '">^</a></p><br>';
 					} else {
 						$post_content .= '<p>' . make_clickable($post->link) . '</p><br>';
 					}
