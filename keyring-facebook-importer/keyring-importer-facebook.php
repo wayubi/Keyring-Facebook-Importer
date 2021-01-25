@@ -418,15 +418,17 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			}
 
 			// Inject videos
-			if ($post->type == 'video') {
-				if (!empty($videos)) {
-					foreach ($videos as $video) {
-						$post_content .= '<p>' . $video . '</p><br>';
-					}
-				} else {
-					$link = $post->link;
-					$post_content .= '<p>' . $link . '</p><br>';
+
+			// Videos
+			if (!empty($videos)) {
+				foreach ($videos as $video) {
+					$post_content .= '<p>' . $video . '</p><br>';
 				}
+			}
+
+			// YouTube
+			if (stristr($post->link, 'youtube.com')) {
+				$post_content .= '<p>' . $post->link . '</p><br>';
 			}
 
 			// Prepare comments
