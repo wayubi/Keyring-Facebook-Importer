@@ -413,18 +413,18 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_content .= '<p><img src="' . $photo . '" /></p><br>';
 			}
 
-			// Inject videos
-
-			// Videos
-			if (!empty($videos)) {
-				foreach ($videos as $video) {
-					$post_content .= '<p>' . $video . '</p><br>';
-				}
+			// Insert first video
+			if (!empty($videos)) { // Embedded
+				$post_content .= '<p>' . $videos[0] . '</p><br>';
+			} else if (stristr($post->link, 'youtube.com')) { // YouTube
+				$post_content .= '<p>' . $post->link . '</p><br>';
 			}
 
-			// YouTube
-			if (stristr($post->link, 'youtube.com')) {
-				$post_content .= '<p>' . $post->link . '</p><br>';
+			// Inject remaining videos
+			foreach ($videos as $index => $video) {
+				if ($index == 0)
+					continue;
+				$post_content .= '<p>' . $video . '</p><br>';
 			}
 
 			// Prepare comments
@@ -508,6 +508,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				case 'link':
 					$tags[] = 'links';
 					break;
+				case 'status':
+					$tags[] = 'statuses';
 				default:
 					break;
 			}
