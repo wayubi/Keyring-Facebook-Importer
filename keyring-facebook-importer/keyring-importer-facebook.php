@@ -14,15 +14,15 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	const LOG_PATH          = '/tmp/log.txt';
 
 	var $api_endpoints = array(
+		'/posts',
 		// '/albums',
 		// '/photos',
-		'/posts'
 	);
 
 	var $api_endpoint_fields = array(
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments',
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,images',
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments'
 	);
 
 	// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-06-01'
