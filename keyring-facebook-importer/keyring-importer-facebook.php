@@ -393,42 +393,42 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			// Inject first image
 			if (!empty($photos)) {
 				if (!empty($videos) || stristr($post->link, 'youtube.com')) {
-					$post_content .= '<p class="vthumb"><img src="' . $photos[0] . '" /></p><br>';
+					$post_content .= '<p class="vthumb"><img src="' . $photos[0] . '" /></p>';
 				} else {
-					$post_content .= '<p><img src="' . $photos[0] . '" /></p><br>';
+					$post_content .= '<p><img src="' . $photos[0] . '" /></p>';
 				}
 			}
 
 			// Insert first video
 			if (!empty($videos)) { // Embedded
-				$post_content .= '<p>' . $videos[0] . '</p><br>';
+				$post_content .= '<p>' . $videos[0] . '</p>';
 			} else if (stristr($post->link, 'youtube.com')) { // YouTube
-				$post_content .= '<p>' . $post->link . '</p><br>';
+				$post_content .= '<p>' . $post->link . '</p>';
 			}
 
 			// Inject remaining images
 			foreach ($photos as $index => $photo) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<p><img src="' . $photo . '" /></p><br>';
+				$post_content .= '<p><img src="' . $photo . '" /></p>';
 			}
 
 			// Inject remaining videos
 			foreach ($videos as $index => $video) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<p>' . $video . '</p><br>';
+				$post_content .= '<p>' . $video . '</p>';
 			}
 
 			// Continue with text
 
 			if (!empty($post->story))
-				$post_content .= '<p>' . make_clickable(addslashes($post->story)) . '</p><br>';
+				$post_content .= '<p>' . make_clickable(addslashes($post->story)) . '</p>';
 
 			if (!empty($post->message)) {
 				$message = $post->message;
 				$message = preg_replace('/(https{0,1}:\/\/www.facebook.com\/).+?\/posts\/(\d+)/', '$1$2', $message);
-				$post_content .= '<p>' . make_clickable(addslashes($message)) . '</p><br>';
+				$post_content .= '<p>' . make_clickable(addslashes($message)) . '</p>';
 			}
 
 			// Prepare comments
@@ -450,11 +450,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
 								$image = $this->fetchHighResImage($photo_object->images);
 								$photos[] = $image;
-								$post_content .= '<p><img src="' . $image . '" /></p><br>';
+								$post_content .= '<p><img src="' . $image . '" /></p>';
 							} else if ($attachment->type == 'video_inline') {
 								$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 								$videos[] = $video_object->source;
-								$post_content .= '<p>' . $video_object->source . '</p><br>';
+								$post_content .= '<p>' . $video_object->source . '</p>';
 							}
 						}
 
@@ -464,13 +464,13 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							if (!stristr($message, 'youtube.com') && !stristr($message, 'twitter.com')) {
 								$message = make_clickable($message);
 							}
-							$post_content .= '<p>' . addslashes($message) . '</p><br>';
+							$post_content .= '<p>' . addslashes($message) . '</p>';
 						}
 					}
 				}
 			}
 
-			$post_content .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">^</a>' . '</p><br>';
+			$post_content .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">^</a>' . '</p>';
 
 			// Prepare link
 
@@ -478,20 +478,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_content .= '<blockquote>';
 
 				if (!empty($post->name))
-					$post_content .= '<p>' . addslashes($post->name) . '</p><br>';
+					$post_content .= '<p>' . addslashes($post->name) . '</p>';
 
 				if (!empty($post->description))
-					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p><br>';
+					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p>';
 
 				if (!empty($post->link)) {
 					if (stristr($post->link, 'facebook.com')) {
 						if ($post->link != $post->permalink_url) {
-							$post_content .= '<p><a href="' . $post->link . '">^</a></p><br>';
+							$post_content .= '<p><a href="' . $post->link . '">^</a></p>';
 						}
 					} else if (stristr($post->link, 'youtube.com')) {
-						$post_content .= '<p><a href="' . $post->link . '">^</a></p><br>';
+						$post_content .= '<p><a href="' . $post->link . '">^</a></p>';
 					} else {
-						$post_content .= '<p>' . make_clickable($post->link) . '</p><br>';
+						$post_content .= '<p>' . make_clickable($post->link) . '</p>';
 					}
 				}
 
