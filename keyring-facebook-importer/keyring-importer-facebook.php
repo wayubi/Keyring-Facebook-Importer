@@ -401,7 +401,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Insert first video
 			if (!empty($videos)) { // Embedded
-				$post_content .= '<p>' . $videos[0] . '</p>';
+				$post_content .= '<p>' . esc_url( $videos[0] ) . '</p>';
 			} else if (stristr($post->link, 'youtube.com')) { // YouTube
 				$post_content .= '<p>' . $post->link . '</p>';
 			}
@@ -417,7 +417,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			foreach ($videos as $index => $video) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<p>' . $video . '</p>';
+				$post_content .= '<p>' . esc_url( $video ) . '</p>';
 			}
 
 			// Continue with text
@@ -728,20 +728,17 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 				add_post_meta( $post_id, 'raw_import_data', json_encode( $facebook_raw ) );
 
-				if ( ! empty( $photos ) ) {
-					$this->sideload_media( $photos, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ) );
+				if (!empty($photos)) {
+					$this->sideload_media($photos, $post_id, $post, apply_filters( 'keyring_facebook_importer_image_embed_size', 'full' ));
+				}
+
+				if (!empty($videos)) {
+					$this->sideload_video($videos, $post_id);
 				}
 
 				if ( ! empty( $album_photos ) ) {
 					foreach ( $album_photos as $photo ) {
 						$this->sideload_photo_to_album( $photo, $post_id );
-					}
-				}
-
-				if ( ! empty( $videos ) ) {
-					foreach ( $videos as $video ) {
-						// $this->sideload_media( $video, $post_id, $post, 'full' );
-						$this->sideload_video( $video, $post_id );
 					}
 				}
 
@@ -760,71 +757,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		$this->log(__METHOD__);
 		$this->set_option( 'endpoint_index', ( ( $this->get_option( 'endpoint_index', 0 ) + 1 ) % count( $this->api_endpoints ) ) );
 		$this->current_endpoint = $this->endpoint_prefix . $this->api_endpoints[ $this->get_option( 'endpoint_index' ) ];
-	}
-
-	function sideload_video( $url, $post_id ) {
-		$this->log(__METHOD__);
-		$file = array();
-		$file['tmp_name'] = download_url( $url );
-		if ( is_wp_error( $file['tmp_name'] ) ) {
-			// Download failed, leave the post alone
-			@unlink( $file_array['tmp_name'] );
-		} else {
-			// Download worked, now import into Media Library
-			$file['name'] = substr(basename($url), 0, strpos(basename($url), '?'));
-			$id = media_handle_sideload( $file, $post_id );
-			@unlink( $file_array['tmp_name'] );
-			if ( ! is_wp_error( $id ) ) {
-				// Update URL in post to point to the local copy
-				$post_data = get_post( $post_id );
-				$post_data->post_content = str_replace( $url, wp_get_attachment_url( $id ), $post_data->post_content );
-				wp_update_post( $post_data );
-			}
-		}
-	}
-
-	private function sideload_album_photo( $file, $post_id, $desc = '', $post_date = null, $post_date_gmt = null ) {
-		$this->log(__METHOD__);
-		if ( !function_exists( 'media_handle_sideload' ) )
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-		if ( !function_exists( 'download_url' ) )
-			require_once ABSPATH . 'wp-admin/includes/file.php';
-		if ( !function_exists( 'wp_read_image_metadata' ) )
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-
-		/* Taken from media_sideload_image. There's probably a better way that doesn't include so much copy/paste. */
-		// Download file to temp location
-		$tmp = download_url( $file );
-		// Set variables for storage
-		// fix file filename for query strings
-		preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png)\b/i', $file, $matches );
-		$file_array['name'] = basename($matches[0]);
-		$file_array['tmp_name'] = $tmp;
-		// If error storing temporarily, unlink
-		if ( is_wp_error( $tmp ) ) {
-				@unlink($file_array['tmp_name']);
-				$file_array['tmp_name'] = '';
-		}
-
-		$post_author  = $this->get_option( 'author' );
-		$post_title   = $this->prepare_post_title($desc);
-		$post_content = $desc;
-
-		$post_data = compact(
-			'post_date',
-			'post_date_gmt',
-			'post_author',
-			'post_title',
-			'post_content'
-		);
-
-		// do the validation and storage stuff
-		$id = $this->media_handle_sideload( $file_array, $post_id, $desc, $post_data );
-		/* End copy/paste */
-
-		@unlink($file_array['tmp_name']);
-
-		return $id;
 	}
 
 	private function retrieve_pages() {
@@ -901,6 +833,109 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		return false;
 	}
 
+	/**
+	 * @since 2021-01-26 02:26:00
+	 */
+	public function sideload_media( $urls, $post_id, $post, $size = 'large', $where = 'prepend' ) {
+		$this->log(__METHOD__);
+
+		if ( ! is_array( $urls ) ) {
+			$urls = array( $urls );
+		}
+
+		// Get the base uploads directory so that we can skip things in there
+		$dir = wp_get_upload_dir();
+		$dir = $dir['baseurl'];
+
+		$orig_content = $post['post_content'];
+		foreach( $urls as $num => $url ) {
+			// Skip completely if this URL appears to already be local
+			if ( false !== stristr( $url, $dir ) ) {
+				continue;
+			}
+
+			$post_data = array(
+				'post_author'   => $post['post_author'],
+				'post_date'     => $post['post_date'],
+				'post_date_gmt' => $post['post_date_gmt'],
+				'post_title'    => $post['post_title'],
+			);
+
+			// Attempt to download/attach the media to this post
+			$id = $this->media_sideload_image( $url, $post_id, $post['post_title'], 'id', $post_data );
+			if ( ! is_wp_error( $id ) ) {
+				if ( 0 === $num ) {
+					// Set the first successfully processed image as Featured
+					set_post_thumbnail( $post_id, $id );
+				}
+
+				// Update the post to reference the new local image
+				$data = wp_get_attachment_image_src( $id, $size );
+				if ( $data ) {
+					$img = '<img src="' . esc_url( $data[0] ) . '" width="' . esc_attr( $data[1] ) . '" height="' . esc_attr( $data[2] ) . '" alt="' . esc_attr( $post['post_title'] ) . '" class="keyring-img" />';
+				}
+
+				// Regex out the previous img tag, put this one in there instead, or prepend it to the top/bottom, depending on $append
+				if ( stristr( $post['post_content'], $url ) ) { // always do this if the image is in there already
+					$post['post_content'] = preg_replace( '!<img\s[^>]*src=[\'"]' . preg_quote( $url ) . '[\'"][^>]*>!', $img, $post['post_content'] ) . "\n";
+				} else if ( 'append' == $where ) {
+					$post['post_content'] = $post['post_content'] . "\n\n" .  $img;
+				} else if ( 'prepend' == $where ) {
+					$post['post_content'] = $img . "\n\n" . $post['post_content'];
+				}
+			}
+		}
+
+		// Update and we're out
+		if ( $post['post_content'] !== $orig_content ) {
+			$post['ID'] = $post_id;
+			return wp_update_post( $post );
+		}
+
+		return true;
+	}
+
+	/**
+	 * @since 2021-01-26 02:26:00
+	 */
+	public function sideload_video( $urls, $post_id ) {
+		$this->log(__METHOD__);
+
+		if ( ! is_array( $urls ) ) {
+			$urls = array( $urls );
+		}
+
+		foreach( $urls as $url ) {
+			$file = array();
+			$file['tmp_name'] = download_url( $url );
+			$file['name']     = basename( explode( '?', $url )[0] ); // Strip any querystring to avoid confusing mimetypes
+
+			if ( is_wp_error( $file['tmp_name'] ) ) {
+				// Download failed, leave the post alone
+				@unlink( $file_array['tmp_name'] );
+			} else {
+
+				$post_data = get_post( $post_id );
+				$post_data = array(
+					'post_author'   => $post_data->post_author,
+					'post_date'     => $post_data->post_date,
+					'post_date_gmt' => $post_data->post_date_gmt,
+					'post_title'    => $post_data->post_title,
+				);
+
+				// Download worked, now import into Media Library and attach to the specified post
+				$id = $this->media_handle_sideload( $file, $post_id, null, $post_data );
+				@unlink( $file_array['tmp_name'] );
+				if ( ! is_wp_error( $id ) ) {
+					// Update URL in post to point to the local copy
+					$post_data = get_post( $post_id );
+					$post_data->post_content = str_replace( esc_url( $url ), wp_get_attachment_url( $id ), $post_data->post_content );
+					wp_update_post( $post_data );
+				}
+			}
+		}
+	}
+
 	private function sideload_photo_to_album( $photo, $album_id ) {
 		$this->log(__METHOD__);
 		global $wpdb;
@@ -918,20 +953,167 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		return $photo_id;
 	}
 
-	private function media_handle_sideload( $file_array, $post_id = 0, $desc = null, $post_data ) {
+	private function sideload_album_photo( $file, $post_id, $desc = '', $post_date = null, $post_date_gmt = null ) {
 		$this->log(__METHOD__);
+		if ( !function_exists( 'media_handle_sideload' ) )
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+		if ( !function_exists( 'download_url' ) )
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		if ( !function_exists( 'wp_read_image_metadata' ) )
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		/* Taken from media_sideload_image. There's probably a better way that doesn't include so much copy/paste. */
+		// Download file to temp location
+		$tmp = download_url( $file );
+		// Set variables for storage
+		// fix file filename for query strings
+		preg_match( '/[^\?]+\.(jpe?g|jpe|gif|png)\b/i', $file, $matches );
+		$file_array['name'] = basename($matches[0]);
+		$file_array['tmp_name'] = $tmp;
+		// If error storing temporarily, unlink
+		if ( is_wp_error( $tmp ) ) {
+				@unlink($file_array['tmp_name']);
+				$file_array['tmp_name'] = '';
+		}
+
+		$post_author  = $this->get_option( 'author' );
+		$post_title   = $this->prepare_post_title($desc);
+		$post_content = $desc;
+
+		$post_data = compact(
+			'post_date',
+			'post_date_gmt',
+			'post_author',
+			'post_title',
+			'post_content'
+		);
+
+		// do the validation and storage stuff
+		$id = $this->media_handle_sideload( $file_array, $post_id, $desc, $post_data );
+		/* End copy/paste */
+
+		@unlink($file_array['tmp_name']);
+
+		return $id;
+	}
+
+	/**
+	 * Downloads an image from the specified URL, saves it as an attachment, and optionally attaches it to a post.
+	 *
+	 * @since 2.6.0
+	 * @since 4.2.0 Introduced the `$return` parameter.
+	 * @since 4.8.0 Introduced the 'id' option for the `$return` parameter.
+	 * @since 5.3.0 The `$post_id` parameter was made optional.
+	 * @since 5.4.0 The original URL of the attachment is stored in the `_source_url`
+	 *              post meta value.
+	 *
+	 * @param string $file    The URL of the image to download.
+	 * @param int    $post_id Optional. The post ID the media is to be associated with.
+	 * @param string $desc    Optional. Description of the image.
+	 * @param string $return  Optional. Accepts 'html' (image tag html) or 'src' (URL),
+	 *                        or 'id' (attachment ID). Default 'html'.
+	 * @param array  $post_data  Optional. Post data to override. Default empty array.
+	 * @return string|int|WP_Error Populated HTML img tag, attachment ID, or attachment source
+	 *                             on success, WP_Error object otherwise.
+	 */
+	private function media_sideload_image( $file, $post_id = 0, $desc = null, $return = 'html', $post_data = array() ) {
+		if ( ! empty( $file ) ) {
+
+			$allowed_extensions = array( 'jpg', 'jpeg', 'jpe', 'png', 'gif' );
+
+			/**
+			 * Filters the list of allowed file extensions when sideloading an image from a URL.
+			 *
+			 * The default allowed extensions are:
+			 *
+			 *  - `jpg`
+			 *  - `jpeg`
+			 *  - `jpe`
+			 *  - `png`
+			 *  - `gif`
+			 *
+			 * @since 5.6.0
+			 *
+			 * @param string[] $allowed_extensions Array of allowed file extensions.
+			 * @param string   $file               The URL of the image to download.
+			 */
+			$allowed_extensions = apply_filters( 'image_sideload_extensions', $allowed_extensions, $file );
+			$allowed_extensions = array_map( 'preg_quote', $allowed_extensions );
+	
+			// Set variables for storage, fix file filename for query strings.
+			preg_match( '/[^\?]+\.(' . implode( '|', $allowed_extensions ) . ')\b/i', $file, $matches );
+	
+			if ( ! $matches ) {
+				return new WP_Error( 'image_sideload_failed', __( 'Invalid image URL.' ) );
+			}
+	
+			$file_array         = array();
+			$file_array['name'] = wp_basename( $matches[0] );
+	
+			// Download file to temp location.
+			$file_array['tmp_name'] = download_url( $file );
+	
+			// If error storing temporarily, return the error.
+			if ( is_wp_error( $file_array['tmp_name'] ) ) {
+				return $file_array['tmp_name'];
+			}
+	
+			// Do the validation and storage stuff.
+			$id = $this->media_handle_sideload( $file_array, $post_id, $desc, $post_data );
+	
+			// If error storing permanently, unlink.
+			if ( is_wp_error( $id ) ) {
+				@unlink( $file_array['tmp_name'] );
+				return $id;
+			}
+	
+			// Store the original attachment source in meta.
+			add_post_meta( $id, '_source_url', $file );
+	
+			// If attachment ID was requested, return it.
+			if ( 'id' === $return ) {
+				return $id;
+			}
+	
+			$src = wp_get_attachment_url( $id );
+		}
+	
+		// Finally, check to make sure the file has been saved, then return the HTML.
+		if ( ! empty( $src ) ) {
+			if ( 'src' === $return ) {
+				return $src;
+			}
+	
+			$alt  = isset( $desc ) ? esc_attr( $desc ) : '';
+			$html = "<img src='$src' alt='$alt' />";
+	
+			return $html;
+		} else {
+			return new WP_Error( 'image_sideload_failed' );
+		}
+	}
+
+	/**
+	 * Handles a side-loaded file in the same way as an uploaded file is handled by media_handle_upload().
+	 *
+	 * @since 2.6.0
+	 * @since 5.3.0 The `$post_id` parameter was made optional.
+	 *
+	 * @param array  $file_array Array similar to a `$_FILES` upload array.
+	 * @param int    $post_id    Optional. The post ID the media is associated with.
+	 * @param string $desc       Optional. Description of the side-loaded file. Default null.
+	 * @param array  $post_data  Optional. Post data to override. Default empty array.
+	 * @return int|WP_Error The ID of the attachment or a WP_Error on failure.
+	 */
+	private function media_handle_sideload( $file_array, $post_id = 0, $desc = null, $post_data = array() ) {
 		$overrides = array( 'test_form' => false );
 
-		$time = $post_data['post_date'];
+		$time = current_time( 'mysql' );
 		$post = get_post( $post_id );
 
-		if (empty($time)) {
-			$time = current_time( 'mysql' );
-
-			if ( $post ) {
-				if ( substr( $post->post_date, 0, 4 ) > 0 ) {
-					$time = $post->post_date;
-				}
+		if ( $post ) {
+			if ( substr( $post->post_date, 0, 4 ) > 0 ) {
+				$time = $post->post_date;
 			}
 		}
 
@@ -971,7 +1153,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				'guid'           => $url,
 				'post_parent'    => $post_id,
 				'post_title'     => $title,
-				'post_content'   => $content
+				'post_content'   => $content,
 			),
 			$post_data
 		);
