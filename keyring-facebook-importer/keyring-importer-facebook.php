@@ -55,9 +55,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			</th>
 			<td>
 				<?php
-
-				$prev_post_status = $this->get_option( 'fb_post_status' );
-
+					$prev_post_status = $this->get_option( 'fb_post_status' );
 				?>
 				<select name="fb_post_status" id="fb_post_status">
 					<option value="publish" <?php selected( $prev_post_status == 'publish' ); ?>><?php esc_html_e( 'Publish', 'keyring-facebook' ); ?></option>
@@ -71,21 +69,17 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			</th>
 			<td>
 				<?php
-
-				$prev_fb_page = $this->get_option( 'facebook_page' );
-				$fb_pages = $this->retrieve_pages();
-
+					$prev_fb_page = $this->get_option( 'facebook_page' );
+					$fb_pages = $this->retrieve_pages();
 				?>
 				<select name="facebook_page" id="facebook_page">
 					<option value="0"><?php esc_html_e( 'Personal Profile', 'keyring-facebook' ); ?></option>
 					<?php
-
-					if (!empty($fb_pages) && is_array($fb_pages)) {
-						foreach ( $fb_pages as $fb_page ) {
-							printf( '<option value="%1$s"' . selected( $prev_fb_page == $fb_page['id'] ) . '>%2$s</option>', esc_attr( $fb_page['id'] ), esc_html( $fb_page['name'] ) );
+						if (!empty($fb_pages) && is_array($fb_pages)) {
+							foreach ( $fb_pages as $fb_page ) {
+								printf( '<option value="%1$s"' . selected( $prev_fb_page == $fb_page['id'] ) . '>%2$s</option>', esc_attr( $fb_page['id'] ), esc_html( $fb_page['name'] ) );
+							}
 						}
-					}
-
 					?>
 				</select>
 			</td>
@@ -315,7 +309,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Other bits
 			$post_author = $this->get_option( 'author' );
-
 			$post_status = $this->get_option( 'fb_post_status' );
 
 			if ($post_id)
@@ -562,6 +555,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 	}
 
+	/**
+	 * @todo skip $import_private_posts
+	 */
 	private function extract_posts_from_data_albums( $importdata ) {
 		$this->log(__METHOD__);
 		global $wpdb;
@@ -626,6 +622,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 	}
 
+	/**
+	 * @todo skip $import_private_posts
+	 */
 	private function extract_posts_from_data_photos( $importdata ) {
 		$this->log(__METHOD__);
 		global $wpdb;
