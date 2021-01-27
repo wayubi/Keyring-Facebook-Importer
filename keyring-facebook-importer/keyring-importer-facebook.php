@@ -99,8 +99,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					$import_private_posts = $this->get_option( 'import_private_posts' );
 				?>
 				<select name="import_private_posts" id="import_private_posts">
-					<option value="1" <?php selected( $prev_post_status == '1' ); ?>><?php esc_html_e( 'Yes', 'keyring-facebook' ); ?></option>
-					<option value="0" <?php selected( $prev_post_status == '0' ); ?>><?php esc_html_e( 'No', 'keyring-facebook' ); ?></option>
+					<option value="1" <?php selected( $import_private_posts == '1' ); ?>><?php esc_html_e( 'Yes', 'keyring-facebook' ); ?></option>
+					<option value="0" <?php selected( $import_private_posts == '0' ); ?>><?php esc_html_e( 'No', 'keyring-facebook' ); ?></option>
 				</select>
 			</td>
 		</tr>
