@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2013-12-31',
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -155,7 +155,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
 		// var_dump($url);
-		// return $url;
+		return $url;
 
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -304,6 +304,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				continue;
 
 			$facebook_id = substr($post->id, strpos($post->id, '_') + 1);
+			$import_url = 'https://www.facebook.com/' . $facebook_id;
 
 			$post_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id ) );
 
@@ -483,21 +484,27 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
-			// Prepare link
+			// Prepare blockquote
 
 			if (!empty($post->name) || !empty($post->description)) {
-				$post_content .= '<blockquote>';
+				if ( !empty($post->link) && stristr($post->link, 'facebook.com') && ($post->link == $post->permalink_url) ) {
+					$import_url = $post->permalink_url;
+				} else if ( !empty($post->attachments) && !empty($post->attachments->data[0]) && in_array($post->attachments->data[0]->type, array('profile_media', 'album')) ) {
+					$import_url = $post->permalink_url;
+				} else {
+					$post_content .= '<blockquote>';
 
-				if (!empty($post->name))
-					$post_content .= '<p>' . addslashes($post->name) . '</p>';
-
-				if (!empty($post->description))
-					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p>';
-
-				if (!empty($post->link))
-					$post_content .= '<p>' . make_clickable($post->link) . '</p>';
-
-				$post_content .= '</blockquote>';
+					if (!empty($post->name))
+						$post_content .= '<p>' . addslashes($post->name) . '</p>';
+	
+					if (!empty($post->description))
+						$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p>';
+	
+					if (!empty($post->link))
+						$post_content .= '<p>' . make_clickable($post->link) . '</p>';
+	
+					$post_content .= '</blockquote>';	
+				}
 			}
 
 			// Prepare tags
@@ -545,6 +552,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				'post_status',
 				'post_category',
 				'facebook_id',
+				'import_url',
 				'tags',
 				'facebook_raw',
 				'photos',
@@ -557,6 +565,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 	/**
 	 * @todo skip $import_private_posts
+	 * @todo do $import_url
 	 */
 	private function extract_posts_from_data_albums( $importdata ) {
 		$this->log(__METHOD__);
@@ -624,6 +633,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 	/**
 	 * @todo skip $import_private_posts
+	 * @todo do $import_url
 	 */
 	private function extract_posts_from_data_photos( $importdata ) {
 		$this->log(__METHOD__);
@@ -722,7 +732,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				wp_set_post_categories( $post_id, $post_category );
 
 				add_post_meta( $post_id, 'facebook_id', $facebook_id );
-				add_post_meta( $post_id, 'import_url', 'https://www.facebook.com/' . $facebook_id );
+				add_post_meta( $post_id, 'import_url', $import_url );
 				add_post_meta( $post_id, 'endpoint', $this->current_endpoint );
 
 				if ( count( $tags ) )
