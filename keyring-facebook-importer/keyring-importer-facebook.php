@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy',
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -92,6 +92,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		</tr>
 		<tr valign="top">
 			<th scope="row">
+				<label for="include_rts"><?php esc_html_e( 'Import private posts', 'keyring-facebook' ); ?></label>
+			</th>
+			<td>
+				<?php
+					$import_private_posts = $this->get_option( 'import_private_posts' );
+				?>
+				<select name="import_private_posts" id="import_private_posts">
+					<option value="1" <?php selected( $prev_post_status == '1' ); ?>><?php esc_html_e( 'Yes', 'keyring-facebook' ); ?></option>
+					<option value="0" <?php selected( $prev_post_status == '0' ); ?>><?php esc_html_e( 'No', 'keyring-facebook' ); ?></option>
+				</select>
+			</td>
+		</tr>
+		<tr valign="top">
+			<th scope="row">
 				<label for="include_rts"><?php esc_html_e( 'Comment Trigger', 'keyring-facebook' ); ?></label>
 			</th>
 			<td>
@@ -124,13 +138,14 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$this->step = 'options';
 		} else {
 			$this->set_option( array(
-				'category'        => (int) $_POST['category'],
-				'tags'            => explode( ',', $_POST['tags'] ),
-				'author'          => (int) $_POST['author'],
-				'auto_import'     => $_POST['auto_import'],
-				'facebook_page'   => $_POST['facebook_page'],
-				'fb_post_status'  => $_POST['fb_post_status'],
-				'comment_trigger' => $_POST['comment_trigger']
+				'category'             => (int) $_POST['category'],
+				'tags'                 => explode( ',', $_POST['tags'] ),
+				'author'               => (int) $_POST['author'],
+				'auto_import'          => $_POST['auto_import'],
+				'facebook_page'        => $_POST['facebook_page'],
+				'fb_post_status'       => $_POST['fb_post_status'],
+				'import_private_posts' => $_POST['import_private_posts'],
+				'comment_trigger'      => $_POST['comment_trigger']
 			) );
 
 			$this->step = 'import';
@@ -146,7 +161,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
 		// var_dump($url);
-		// return $url;
+		return $url;
 
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -287,7 +302,12 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		$this->log(__METHOD__);
 		global $wpdb;
 
+		$import_private_posts = (bool) $this->get_option( 'import_private_posts' );
+
 		foreach ( $importdata->data as $post ) {
+
+			if (!$import_private_posts && !empty($post->privacy) && !empty($post->privacy->value) && $post->privacy->value == 'SELF')
+				continue;
 
 			$facebook_id = substr($post->id, strpos($post->id, '_') + 1);
 
@@ -1168,7 +1188,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		$title_words = explode(' ', strip_tags($message[0]));
 		$post_title  = implode(' ', array_slice($title_words, 0, 9));
 
-		$post_title = rtrim($post_title, ',');
+		$post_title = rtrim($post_title, '.,;:');
 
 		if (count($title_words) > 9) {
 			if (!in_array(substr($post_title, -1), array('.', '?', '!', ',', ';', ':')))
