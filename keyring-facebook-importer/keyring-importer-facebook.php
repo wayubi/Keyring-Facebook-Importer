@@ -155,7 +155,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		// Base request URL
 		$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
 		// var_dump($url);
-		return $url;
+		// return $url;
 
 		if ( $this->auto_import ) {
 			// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -615,6 +615,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 		foreach ($photos->data as $photo) {
 			if ($cache_album_images_last_run < strtotime($photo->updated_time)) {
+				$this->log(__METHOD__ . ': add_to_cache : ' . $photo->id);
 				$cache_album_images[$photo->id] = $this->fetchHighResImage($photo->images);
 			} else {
 				return false;
