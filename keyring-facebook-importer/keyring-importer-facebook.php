@@ -296,6 +296,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		$this->log(__METHOD__);
 		global $wpdb;
 
+		$cache_album_images = $this->cache_album_images();
+
 		$import_private_posts = (bool) $this->get_option( 'import_private_posts' );
 
 		foreach ( $importdata->data as $post ) {
@@ -354,9 +356,16 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							}
 						} else {
 							if ($data->type == 'photo') {
-								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
-								$photos[] = $this->fetchHighResImage($photo_object->images);
+								if (array_key_exists($data->target->id, $cache_album_images)) {
+									$this->log(__METHOD__ . ': cache_album_images : ' . $data->target->id);
+									$photos[] = $cache_album_images[$data->target->id];
+								} else {
+									$this->log(__METHOD__ . ': service->request>images : ' . $data->target->id);
+									$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
+									$photos[] = $this->fetchHighResImage($photo_object->images);
+								}
 							} else if ($data->type == 'video_inline' && !empty($data->media->source)) {
+								$this->log(__METHOD__ . ': service->request>videos : ' . $data->target->id);
 								$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source,thumbnails');
 								$videos[] = $video_object->source;
 								if (!empty($video_object->thumbnails)) {
@@ -456,16 +465,19 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						if (substr($data->message, 0, strlen($comment_trigger)) != $comment_trigger)
 							continue;
 
+						$this->log(__METHOD__ . ': service->request>comments : ' . $data->id);
 						$comment_object = $this->service->request('https://graph.facebook.com/' . $data->id . '?fields=attachment');
 						if (!empty($comment_object->attachment)) {
 							$attachment = $comment_object->attachment;
 
 							if ($attachment->type == 'photo') {
+								$this->log(__METHOD__ . ': service->request>comments/images : ' . $attachment->target->id);
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
 								$image = $this->fetchHighResImage($photo_object->images);
 								$photos[] = $image;
 								$post_content .= '<p><img src="' . $image . '" /></p>';
 							} else if ($attachment->type == 'video_inline') {
+								$this->log(__METHOD__ . ': service->request>comments/videos : ' . $attachment->target->id);
 								$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 								$videos[] = $video_object->source;
 								$post_content .= '<p>' . $video_object->source . '</p>';
@@ -561,6 +573,58 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			$this->posts[] = $compact;
 		}
+	}
+
+	/**
+	 * Cache album images
+	 * @since 2021-01-27
+	 */
+	private function cache_album_images() {
+		$this->log(__METHOD__);
+
+		$cache_album_images             = (array) $this->get_option('cache_album_images');
+		$cache_album_images_last_run    = $this->get_option('cache_album_images_last_run');
+		$cache_album_images_current_run = $this->fetchUtcTimestamp();
+
+		$albums = $this->service->request('https://graph.facebook.com/' . $this->endpoint_prefix . '/albums?fields=id,name,created_time,updated_time,privacy,type');
+		foreach ($albums->data as $album) {
+
+			if ($album->name != 'Timeline Photos') continue;
+
+			$url = 'https://graph.facebook.com/' . $album->id . '/photos?fields=id,name,link,images,created_time,updated_time';
+			while ($url = $this->cache_album_images_walk($url, $cache_album_images, $cache_album_images_last_run));
+		}
+
+		$this->set_option('cache_album_images', $cache_album_images);
+		$this->set_option('cache_album_images_last_run', $cache_album_images_current_run);
+
+		return $cache_album_images;
+	}
+
+	/**
+	 * Cache album images subroutine
+	 * @since 2021-01-27
+	 */
+	private function cache_album_images_walk($url, &$cache_album_images, $cache_album_images_last_run) {
+		$this->log(__METHOD__);
+		
+		$photos = $this->service->request($url, array('method' => $this->request_method, 'timeout' => 10));
+		if (empty($photos) || empty($photos->data)) {
+			return false;
+		}
+
+		foreach ($photos->data as $photo) {
+			if ($cache_album_images_last_run < strtotime($photo->updated_time)) {
+				$cache_album_images[$photo->id] = $this->fetchHighResImage($photo->images);
+			} else {
+				return false;
+			}
+		}
+
+		if (isset($photos->paging) && !empty($photos->paging->next))
+			return $photos->paging->next;
+
+		return false;
 	}
 
 	/**
@@ -1223,6 +1287,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		krsort($i);
 
 		return array_shift($i);
+	}
+
+	private function fetchUtcTimestamp() {
+		return strtotime(gmdate("M d Y H:i:s", time()));
 	}
 
 	private function log($s) {
