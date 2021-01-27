@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2013-12-31',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2014-12-31',
 		'/albums' => 'id,name,created_time,updated_time,privacy',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -489,7 +489,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (!empty($post->name) || !empty($post->description)) {
 				if ( !empty($post->link) && stristr($post->link, 'facebook.com') && ($post->link == $post->permalink_url) ) {
 					$import_url = $post->permalink_url;
-				} else if ( !empty($post->attachments) && !empty($post->attachments->data[0]) && in_array($post->attachments->data[0]->type, array('profile_media', 'album')) ) {
+				} else if ( !empty($post->attachments) && !empty($post->attachments->data[0]) && (in_array($post->attachments->data[0]->type, array('profile_media', 'album')) || $post->attachments->data[0]->title == 'Profile Pictures' ) ) {
 					$import_url = $post->permalink_url;
 				} else {
 					$post_content .= '<blockquote>';
