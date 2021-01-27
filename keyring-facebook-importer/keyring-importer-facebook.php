@@ -20,8 +20,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2014-12-31',
-		'/albums' => 'id,name,created_time,updated_time,privacy',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy',
+		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
 
@@ -564,14 +564,18 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	/**
-	 * @todo skip $import_private_posts
 	 * @todo do $import_url
 	 */
 	private function extract_posts_from_data_albums( $importdata ) {
 		$this->log(__METHOD__);
 		global $wpdb;
 
+		$import_private_posts = (bool) $this->get_option( 'import_private_posts' );
+
 		foreach ( $importdata->data as $album ) {
+
+			if (!$import_private_posts && !empty($album->privacy) && $album->privacy == 'custom')
+				continue;
 
 			$facebook_id = $album->id;
 
