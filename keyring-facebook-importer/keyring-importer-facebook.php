@@ -470,8 +470,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
-			$post_content .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">^</a>' . '</p>';
-
 			// Prepare link
 
 			if (!empty($post->name) || !empty($post->description)) {
@@ -483,17 +481,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if (!empty($post->description))
 					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p>';
 
-				if (!empty($post->link)) {
-					if (stristr($post->link, 'facebook.com')) {
-						if ($post->link != $post->permalink_url) {
-							$post_content .= '<p><a href="' . $post->link . '">^</a></p>';
-						}
-					} else if (stristr($post->link, 'youtube.com')) {
-						$post_content .= '<p><a href="' . $post->link . '">^</a></p>';
-					} else {
-						$post_content .= '<p>' . make_clickable($post->link) . '</p>';
-					}
-				}
+				if (!empty($post->link))
+					$post_content .= '<p>' . make_clickable($post->link) . '</p>';
 
 				$post_content .= '</blockquote>';
 			}
@@ -714,6 +703,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				wp_set_post_categories( $post_id, $post_category );
 
 				add_post_meta( $post_id, 'facebook_id', $facebook_id );
+				add_post_meta( $post_id, 'import_url', 'https://www.facebook.com/' . $facebook_id );
 				add_post_meta( $post_id, 'endpoint', $this->current_endpoint );
 
 				if ( count( $tags ) )
@@ -1190,10 +1180,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		return $post_title;
 	}
 
-	private function log($s) {
-		file_put_contents(static::LOG_PATH, '[' . date('Y-m-d H:i:s') . '] ' . $s . PHP_EOL, FILE_APPEND);
-	}
-
 	private function fetchHighResImage($images) {
 		$this->log(__METHOD__);
 
@@ -1204,6 +1190,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		krsort($i);
 
 		return array_shift($i);
+	}
+
+	private function log($s) {
+		file_put_contents(static::LOG_PATH, '[' . date('Y-m-d H:i:s') . '] ' . $s . PHP_EOL, FILE_APPEND);
 	}
 }
 
