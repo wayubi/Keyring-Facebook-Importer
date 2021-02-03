@@ -323,77 +323,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post->created_time ) );
 			$post_date = get_date_from_gmt( $post_date_gmt );
 
-			// Prepare media
-
-			$videos = array();
-			$photos = array();
-
-			if ($post->type == 'photo' || $post->type == 'video') {
-
-				if (!empty($post->attachments)) {
-					foreach ($post->attachments->data as $data) {
-						if (!empty($data->subattachments)) {
-							foreach ($data->subattachments->data as $index => $s_data) {
-								if ($s_data->type == 'photo') {
-									$photo_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=images');
-									$photos[] = $this->fetchHighResImage($photo_object->images);
-								} else if ($s_data->type == 'video') {
-									$video_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=source,thumbnails');
-									$videos[] = $video_object->source;
-									if ($index == 0) {
-										if (!empty($video_object->thumbnails)) {
-											foreach ($video_object->thumbnails->data as $s_data) {
-												$photos[] = $s_data->uri;
-												break;
-											}
-										} else {
-											$photos[] = $data->media->image->src;
-										}
-									}
-								} else {
-									$photos[] = $s_data->media->image->src;
-								}
-							}
-						} else {
-							if ($data->type == 'photo') {
-								if (array_key_exists($data->target->id, $cache_album_images)) {
-									$this->log(__METHOD__ . ': cache_album_images : ' . $data->target->id);
-									$photos[] = $cache_album_images[$data->target->id];
-								} else {
-									$this->log(__METHOD__ . ': service->request>images : ' . $data->target->id);
-									$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
-									$photos[] = $this->fetchHighResImage($photo_object->images);
-								}
-							} else if ($data->type == 'video_inline' && !empty($data->media->source)) {
-								$this->log(__METHOD__ . ': service->request>videos : ' . $data->target->id);
-								$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source,thumbnails');
-								$videos[] = $video_object->source;
-								if (!empty($video_object->thumbnails)) {
-									foreach ($video_object->thumbnails->data as $t_data) {
-										$photos[] = $t_data->uri;
-										break;
-									}
-								} else {
-									$photos[] = $data->media->image->src;
-								}
-							} else {
-								$photos[] = $data->media->image->src;
-							}
-						}
-					}
-				} else {
-					if ($post->type == 'photo') {
-						$photos[] = $post->full_picture;
-					} else if ($post->type == 'video') {
-						$videos[] = $post->source;
-						$photos[] = $post->full_picture;
-					}
-				}
-
-			} else if (!empty($post->full_picture)) {
-				$photos[] = $post->full_picture;
-			}
-
 			// Prepare post title
 
 			$post_title = '';
@@ -408,6 +337,82 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_title = 'Untitled';
 
 			$post_title = $this->prepare_post_title($post_title);
+
+			// Prepare media
+
+			$videos = array();
+			$photos = array();
+
+			if (!empty($post->attachments) && !empty($post->attachments->data)) {
+
+				foreach ($post->attachments->data as $data) {
+
+					if (!empty($data->subattachments) && !empty($data->subattachments->data)) {
+
+						foreach ($data->subattachments->data as $s_data) {
+
+							if ($s_data->type == 'photo') {
+								$photo_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=images');
+								$photos[] = $this->fetchHighResImage($photo_object->images);
+							} else if ($s_data->type == 'video') {
+								$video_object = $this->service->request('https://graph.facebook.com/' . $s_data->target->id . '?fields=source,thumbnails');
+								$videos[] = $video_object->source;
+								if ($index == 0) {
+									if (!empty($video_object->thumbnails)) {
+										foreach ($video_object->thumbnails->data as $s_data) {
+											$photos[] = $s_data->uri;
+											break;
+										}
+									} else {
+										$photos[] = $data->media->image->src;
+									}
+								}
+							} else {
+								$photos[] = $s_data->media->image->src;
+							}
+						}						
+					}
+
+					else {
+						
+						if ($data->type == 'goodwill_shared_card') {
+							$post->name = $data->title;
+							$post->link = $data->url;
+						} else if ($data->type == 'photo') {
+							if (array_key_exists($data->target->id, $cache_album_images)) {
+								$this->log(__METHOD__ . ': cache_album_images : ' . $data->target->id);
+								$photos[] = $cache_album_images[$data->target->id];
+							} else {
+								$this->log(__METHOD__ . ': service->request>images : ' . $data->target->id);
+								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
+								$photos[] = $this->fetchHighResImage($photo_object->images);
+							}
+						} else if ($data->type == 'video_inline' && !empty($data->media->source)) {
+							$this->log(__METHOD__ . ': service->request>videos : ' . $data->target->id);
+							$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source,thumbnails');
+							$videos[] = $video_object->source;
+							if (!empty($video_object->thumbnails)) {
+								foreach ($video_object->thumbnails->data as $t_data) {
+									$photos[] = $t_data->uri;
+									break;
+								}
+							} else {
+								$photos[] = $data->media->image->src;
+							}
+						} else {
+							$photos[] = $data->media->image->src;
+						}
+					}
+				}
+			} else {
+
+				if ($post->type == 'photo') {
+					$photos[] = $post->full_picture;
+				} else if ($post->type == 'video') {
+					$videos[] = $post->source;
+					$photos[] = $post->full_picture;
+				}
+			}
 
 			// Prepare post body
 
