@@ -331,9 +331,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_title = $post->message;
 			else if (!empty($post->story))
 				$post_title = $post->story;
-			else if (!empty($post->name))
+			else if (!empty($post->name)) {
+				$post->name = (bool) preg_match('/^.*?\scover photo$/', $post->name) ? 'Cover Photo' : $post->name;
 				$post_title = $post->name;
-			else
+			} else
 				$post_title = 'Untitled';
 
 			$post_title = $this->prepare_post_title($post_title);
