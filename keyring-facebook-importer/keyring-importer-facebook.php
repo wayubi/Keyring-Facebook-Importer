@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2016-12-22',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2016-12-30',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -335,6 +335,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					unset($post->name);
 			}
 
+			// Twitter cleanup.
+			if (stristr($post->link, 'twitter.com')) {
+				$post->description = rtrim(ltrim($post->description, '“'), '”');
+			}
+
 			if (!empty($post->message))
 				$post_title = $post->message;
 			else if (!empty($post->story))
@@ -423,7 +428,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$photos[] = $this->fetchHighResImage($photo_object->images);
 							}
 						} else {
-							$photos[] = $data->media->image->src;
+							$photos[] = $post->full_picture;
+							// $photos[] = $data->media->image->src;
 						}
 					}
 				}
@@ -545,6 +551,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 				if (!empty($post->description))
 					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p>';
+
+				if (stristr($post->link, 'twitter.com'))
+					$post_content .= '<p>' . $post->link . '</p>';
 
 				if (!empty($post->link))
 					$post_content .= '<p>' . make_clickable($post->link) . '</p>';
