@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2021-01-21',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -327,14 +327,18 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			$post_title = '';
 
+			if (!empty($post->name)) {
+				$post->name = (bool) preg_match('/^.*?\scover photo$/', $post->name) ? 'Cover Photo' : $post->name;
+				$post->name = (bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name) ? 'Photos from post' : $post->name;
+			}
+
 			if (!empty($post->message))
 				$post_title = $post->message;
 			else if (!empty($post->story))
 				$post_title = $post->story;
-			else if (!empty($post->name)) {
-				$post->name = (bool) preg_match('/^.*?\scover photo$/', $post->name) ? 'Cover Photo' : $post->name;
+			else if (!empty($post->name))
 				$post_title = $post->name;
-			} else
+			else
 				$post_title = 'Untitled';
 
 			$post_title = $this->prepare_post_title($post_title);
