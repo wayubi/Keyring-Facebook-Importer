@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2016-12-24',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2011-05-11',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -327,7 +327,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (!empty($post->name)) {
 				$post->name = (bool) preg_match('/^.*?\scover photo$/', $post->name) ? 'Cover Photo' : $post->name;
 				$post->name = (bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name) ? 'Photos from post' : $post->name;
-				if ((bool) preg_match('/^' . $post->name. '.*?$/', $this->service->get_token()->get_display()))
+				if ((bool) preg_match('/^' . preg_quote($post->name, '/'). '.*?$/', $this->service->get_token()->get_display()))
 					unset($post->name);
 			}
 
