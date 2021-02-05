@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2012-12-31',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2011-12-31',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -551,6 +551,16 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				}
 			}
 
+			// Prepare place
+
+			if (!empty($post->place) && !empty($post->place->location) && !empty($post->place->location->latitude) && !empty($post->place->location->longitude)) {
+
+				$bbox = $this->getOpenStreetMapBBox($post->place->location->latitude, $post->place->location->longitude, 1000);
+				$openStreetMapUrl = vsprintf('https://www.openstreetmap.org/export/embed.html?bbox=%.15f%%2C%.15f%%2C%.15f%%2C%.15f&amp;layer=mapnik&amp;marker=%.15f%%2C%.15f', $bbox);
+
+				$post_content .= '<p><iframe width="425" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="' . $openStreetMapUrl . '" style="border: 1px solid black"></iframe></p><p><a href="https://www.openstreetmap.org/#map=16/' . $post->place->location->latitude . '/' . $post->place->location->longitude . '">' . $post->place->location->latitude . ',' . $post->place->location->longitude . '</a></p>';
+			}
+
 			// Prepare blockquote
 
 			if ( $post->link != $post->permalink_url && ( !empty($post->name) || !empty($post->description) ) ) {
@@ -981,7 +991,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	/**
-	 * @since 2021-01-26 02:26:00
+	 * @since 2021-01-26
 	 */
 	public function sideload_media( $urls, $post_id, $post, $size = 'large', $where = 'prepend' ) {
 		$this->log(__METHOD__);
@@ -1043,7 +1053,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	}
 
 	/**
-	 * @since 2021-01-26 02:26:00
+	 * @since 2021-01-26
 	 */
 	public function sideload_video( $urls, $post_id ) {
 		$this->log(__METHOD__);
@@ -1316,6 +1326,33 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		}
 
 		return $attachment_id;
+	}
+
+	/**
+	 * @since 2021-02-05
+	 * @author https://help.openstreetmap.org/questions/20335/embedded-html-displays-zoomed-out
+	 */
+	private function getOpenStreetMapCoordOffset($what, $lat, $lon, $offset) {
+		$earthRadius = 6378137;
+		$coord = [0 => $lat, 1 => $lon];
+		$radOff = $what === 0 ? $offset / $earthRadius : $offset / ($earthRadius * cos(M_PI * $coord[0] / 180));
+		return $coord[$what] + $radOff * 180 / M_PI;    
+	}
+	
+	/**
+	 * @since 2021-02-05
+	 * @author https://help.openstreetmap.org/questions/20335/embedded-html-displays-zoomed-out
+	 */
+	private function getOpenStreetMapBBox($lat, $lon, $area) {
+		$offset = $area / 2;
+		return [
+			0 => $this->getOpenStreetMapCoordOffset(1, $lat, $lon, -$offset),
+			1 => $this->getOpenStreetMapCoordOffset(0, $lat, $lon, -$offset),
+			2 => $this->getOpenStreetMapCoordOffset(1, $lat, $lon, $offset),
+			3 => $this->getOpenStreetMapCoordOffset(0, $lat, $lon, $offset),
+			4 => $lat,
+			5 => $lon
+		]; // 0 = minlon, 1 = minlat, 2 = maxlon, 3 = maxlat, 4,5 = original val (marker)
 	}
 
 	private function prepare_post_title($post_title) {
