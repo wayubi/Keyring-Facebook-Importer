@@ -395,6 +395,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
 								$photos[] = $this->fetchHighResImage($photo_object->images);
 							}
+
+							if ($data->title == 'Timeline Photos')
+								unset($post->name);
+
 						} else if ($data->type == 'video_inline' && !empty($data->media->source)) {
 							$this->log(__METHOD__ . ': service->request>videos : ' . $data->target->id);
 							$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source,thumbnails');
@@ -446,8 +450,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_title = $post->story;
 			else if (!empty($post->name))
 				$post_title = $post->name;
-			else
-				$post_title = 'Untitled';
+			else {
+				$post->message = 'Untitled.';
+				$post_title = $post->message;
+			}
 
 			$post_title = $this->prepare_post_title($post_title);
 
