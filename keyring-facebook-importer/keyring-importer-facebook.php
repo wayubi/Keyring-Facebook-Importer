@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2016-12-30',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2016-12-24',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -324,14 +324,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post->created_time ) );
 			$post_date = get_date_from_gmt( $post_date_gmt );
 
-			// Prepare post title
-
-			$post_title = '';
-
 			if (!empty($post->name)) {
 				$post->name = (bool) preg_match('/^.*?\scover photo$/', $post->name) ? 'Cover Photo' : $post->name;
 				$post->name = (bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name) ? 'Photos from post' : $post->name;
-				if ((bool) preg_match('/^' . $post->name. '\s.*?$/', $this->service->get_token()->get_display()))
+				if ((bool) preg_match('/^' . $post->name. '.*?$/', $this->service->get_token()->get_display()))
 					unset($post->name);
 			}
 
@@ -339,17 +335,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (stristr($post->link, 'twitter.com')) {
 				$post->description = rtrim(ltrim($post->description, '“'), '”');
 			}
-
-			if (!empty($post->message))
-				$post_title = $post->message;
-			else if (!empty($post->story))
-				$post_title = $post->story;
-			else if (!empty($post->name))
-				$post_title = $post->name;
-			else
-				$post_title = 'Untitled';
-
-			$post_title = $this->prepare_post_title($post_title);
 
 			// Prepare media
 
@@ -397,6 +382,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						if ($data->type == 'goodwill_shared_card') {
 							$post->name = $data->title;
 							$post->link = $data->url;
+						} else if ($data->type == 'profile_media' || $data->title == 'Profile Pictures') {
+							$post->message = 'Profile Picture';
+							$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
+							$photos[] = $this->fetchHighResImage($photo_object->images);
 						} else if ($data->type == 'photo') {
 							if (array_key_exists($data->target->id, $cache_album_images)) {
 								$this->log(__METHOD__ . ': cache_album_images : ' . $data->target->id);
@@ -427,9 +416,12 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
 								$photos[] = $this->fetchHighResImage($photo_object->images);
 							}
+						} else if ($data->type == 'map') {
+							$post->message = 'Went to ' . $data->title;
+							$photos[] = $data->media->image->src;
 						} else {
+							// var_dump('else');
 							$photos[] = $post->full_picture;
-							// $photos[] = $data->media->image->src;
 						}
 					}
 				}
@@ -442,6 +434,26 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					$photos[] = $post->full_picture;
 				}
 			}
+
+			// Prepare post title
+
+			$post_title = '';
+			if (!empty($post->message))
+				$post_title = $post->message;
+			else if (!empty($post->story))
+				$post_title = $post->story;
+			else if (!empty($post->name))
+				$post_title = $post->name;
+			else
+				$post_title = 'Untitled';
+
+			$post_title = $this->prepare_post_title($post_title);
+
+			// var_dump($post);
+			// var_dump($post->attachments->data[0]);
+			// var_dump($videos);
+			// var_dump($photos);
+			// exit;
 
 			// Prepare post body
 
@@ -536,7 +548,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Prepare blockquote
 
-			if (!empty($post->name) || !empty($post->description)) {
+			if ( $post->link != $post->permalink_url && ( !empty($post->name) || !empty($post->description) ) ) {
 				$post_content .= '<blockquote>';
 
 				if (!empty($post->name)) {
