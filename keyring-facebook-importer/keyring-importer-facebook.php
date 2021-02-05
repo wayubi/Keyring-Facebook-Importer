@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2011-05-11',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy&until=2012-12-31',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -422,8 +422,8 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 						} else if ($data->type == 'image_share') {
 							$photos[] = $post->link;
 						} else {
-							// var_dump('else');
-							$photos[] = $post->full_picture;
+							if (!empty($post->full_picture))
+								$photos[] = $post->full_picture;
 						}
 					}
 				}
@@ -473,12 +473,15 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			// Insert first video
 			if (!empty($videos)) { // Embedded
 				$post_content .= '<p>' . esc_url( $videos[0] ) . '</p>';
-			} else if (stristr($post->link, 'youtube.com')) { // YouTube
+			} else if (stristr($post->link, 'youtube.com') || stristr($post->message, 'youtube.com')) { // YouTube
 				$matches = array();
 				if ((bool) preg_match('/attribution_link.*?v=([\d\w]+)/', urldecode($post->link), $matches)) {
 					$post->link = 'https://www.youtube.com/watch?v=' . $matches[1];
+					$post_content .= '<p>' . $post->link . '</p>';
 				}
-				$post_content .= '<p>' . $post->link . '</p>';
+				if ((bool) preg_match('/youtube\.com.*?v=([\d\w]+)/', $post->message, $matches)) {
+					$post_content .= '<p>' . 'https://www.youtube.com/watch?v=' . $matches[1] . '</p>';
+				}
 			}
 
 			// Inject remaining images
