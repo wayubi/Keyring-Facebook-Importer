@@ -424,7 +424,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$photos[] = $this->fetchHighResImage($photo_object->images);
 							}
 						} else if ($data->type == 'map') {
-							$post->message = 'Went to ' . $data->title;
+							$message = 'Went to ' . $data->title . '.';
+							if (!empty($post->message))
+								$message .= PHP_EOL . PHP_EOL . $post->message;
+							$post->message = $message;
 							$photos[] = $data->media->image->src;
 						} else if ($data->type == 'image_share') {
 							$photos[] = $post->link;
