@@ -339,7 +339,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (!empty($post->name)) {
 
 				if ((bool) preg_match('/^.*?\scover photo$/', $post->name)) {
-					$post->message = 'Cover Photo';
+					$post->message = 'Cover';
 					unset($post->name);
 			}
 
@@ -405,7 +405,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							$post->name = $data->title;
 							$post->link = $data->url;
 						} else if ($data->type == 'profile_media' || $data->title == 'Profile Pictures') {
-							$post->message = 'Profile Picture';
+							$post->message = 'Profile';
 							$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
 							$photos[] = $this->fetchHighResImage($photo_object->images);
 						} else if ($data->type == 'photo') {
@@ -600,7 +600,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (
 				$post->link != $post->permalink_url
 				&& ( !empty($post->name) || !empty($post->description) )
-				&& !in_array( pathinfo($post->link)['extension'], array('jpg', 'png') )
+				&& !in_array( pathinfo($post->link)['extension'], array('jpg', 'png', 'png:large') )
 			) {
 				$post_content .= '<blockquote>';
 
@@ -631,17 +631,17 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$tags = $this->get_option( 'tags' );
 
 			switch ($post->type) {
-				case 'photo':
-					$tags[] = 'images';
-					break;
-				case 'video':
-					$tags[] = 'videos';
-					break;
-				case 'link':
-					$tags[] = 'links';
-					break;
-				case 'status':
-					$tags[] = 'statuses';
+				// case 'photo':
+				// 	$tags[] = 'images';
+				// 	break;
+				// case 'video':
+				// 	$tags[] = 'videos';
+				// 	break;
+				// case 'link':
+				// 	$tags[] = 'links';
+				// 	break;
+				// case 'status':
+				// 	$tags[] = 'statuses';
 				default:
 					break;
 			}
