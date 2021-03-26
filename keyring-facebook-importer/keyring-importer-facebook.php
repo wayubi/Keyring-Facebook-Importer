@@ -491,7 +491,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					$post->link = 'https://www.youtube.com/watch?v=' . $matches[1];
 					$post_content .= '<p>' . $post->link . '</p>';
 				}
-				if ((bool) preg_match('/youtube\.com.*?v=([\d\w]+)/', $post->message, $matches)) {
+				if ((bool) preg_match('/youtube\.com.*?v=([\d\w]+)/', $post->link, $matches)) {
 					$post_content .= '<p>' . 'https://www.youtube.com/watch?v=' . $matches[1] . '</p>';
 				}
 			}
