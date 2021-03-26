@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2011-12-31',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2009-11-31',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -575,7 +575,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Prepare blockquote
 
-			if ( $post->link != $post->permalink_url && ( !empty($post->name) || !empty($post->description) ) ) {
+			if (
+				$post->link != $post->permalink_url
+				&& ( !empty($post->name) || !empty($post->description) )
+				&& !in_array( pathinfo($post->link)['extension'], array('jpg') )
+			) {
 				$post_content .= '<blockquote>';
 
 				if (!empty($post->name)) {
