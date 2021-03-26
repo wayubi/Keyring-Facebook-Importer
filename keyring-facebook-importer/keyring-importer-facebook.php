@@ -337,10 +337,20 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$post_date = get_date_from_gmt( $post_date_gmt );
 
 			if (!empty($post->name)) {
-				$post->name = (bool) preg_match('/^.*?\scover photo$/', $post->name) ? 'Cover Photo' : $post->name;
-				$post->name = (bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name) ? 'Photos from post' : $post->name;
-				if ((bool) preg_match('/^' . preg_quote($post->name, '/'). '.*?$/', $this->service->get_token()->get_display()))
+
+				if ((bool) preg_match('/^.*?\scover photo$/', $post->name)) {
+					$post->message = 'Cover Photo';
 					unset($post->name);
+			}
+
+				if ((bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name)) {
+					$post->message = 'Photos';
+					unset($post->name);
+				}
+
+				if ((bool) preg_match('/^' . preg_quote($post->name, '/'). '.*?$/', $this->service->get_token()->get_display())) {
+					unset($post->name);
+				}
 			}
 
 			// Twitter cleanup.
