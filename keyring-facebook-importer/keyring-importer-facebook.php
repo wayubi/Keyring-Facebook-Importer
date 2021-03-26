@@ -101,6 +101,17 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		</tr>
 		<tr valign="top">
 			<th scope="row">
+				<label for="include_rts"><?php esc_html_e( 'Reset album images cache', 'keyring-facebook' ); ?></label>
+			</th>
+			<td>
+				<select name="cache_album_images_reset" id="cache_album_images_reset">
+					<option value="0" selected><?php esc_html_e( 'No', 'keyring-facebook' ); ?></option>
+					<option value="1"><?php esc_html_e( 'Yes', 'keyring-facebook' ); ?></option>
+				</select>
+			</td>
+		</tr>
+		<tr valign="top">
+			<th scope="row">
 				<label for="include_rts"><?php esc_html_e( 'Comment Trigger', 'keyring-facebook' ); ?></label>
 			</th>
 			<td>
@@ -133,14 +144,15 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$this->step = 'options';
 		} else {
 			$this->set_option( array(
-				'category'             => (int) $_POST['category'],
-				'tags'                 => explode( ',', $_POST['tags'] ),
-				'author'               => (int) $_POST['author'],
-				'auto_import'          => $_POST['auto_import'],
-				'facebook_page'        => $_POST['facebook_page'],
-				'fb_post_status'       => $_POST['fb_post_status'],
-				'import_private_posts' => $_POST['import_private_posts'],
-				'comment_trigger'      => $_POST['comment_trigger']
+				'category'                 => (int) $_POST['category'],
+				'tags'                     => explode( ',', $_POST['tags'] ),
+				'author'                   => (int) $_POST['author'],
+				'auto_import'              => $_POST['auto_import'],
+				'facebook_page'            => $_POST['facebook_page'],
+				'fb_post_status'           => $_POST['fb_post_status'],
+				'import_private_posts'     => $_POST['import_private_posts'],
+				'cache_album_images_reset' => $_POST['cache_album_images_reset'],
+				'comment_trigger'          => $_POST['comment_trigger']
 			) );
 
 			$this->step = 'import';
@@ -578,7 +590,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (
 				$post->link != $post->permalink_url
 				&& ( !empty($post->name) || !empty($post->description) )
-				&& !in_array( pathinfo($post->link)['extension'], array('jpg') )
+				&& !in_array( pathinfo($post->link)['extension'], array('jpg', 'png') )
 			) {
 				$post_content .= '<blockquote>';
 
@@ -667,8 +679,10 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	private function cache_album_images() {
 		$this->log(__METHOD__);
 
-		$cache_album_images             = (array) $this->get_option('cache_album_images');
-		$cache_album_images_last_run    = $this->get_option('cache_album_images_last_run');
+		$cache_album_images_reset       = (bool) $this->get_option('cache_album_images_reset');
+
+		$cache_album_images             = !$cache_album_images_reset ? (array) $this->get_option('cache_album_images') : array();
+		$cache_album_images_last_run    = !$cache_album_images_reset ? (int) $this->get_option('cache_album_images_last_run') : 0;
 		$cache_album_images_current_run = $this->fetchUtcTimestamp();
 
 		$albums = $this->service->request('https://graph.facebook.com/' . $this->endpoint_prefix . '/albums?fields=id,name,created_time,updated_time,privacy,type');
