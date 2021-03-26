@@ -499,11 +499,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				$post_content .= '<p>' . esc_url( $videos[0] ) . '</p>';
 			} else if (stristr($post->link, 'youtube.com') || stristr($post->message, 'youtube.com')) { // YouTube
 				$matches = array();
-				if ((bool) preg_match('/attribution_link.*?v=([\d\w]+)/', urldecode($post->link), $matches)) {
+				if ((bool) preg_match('/attribution_link.*?v=([\d\w\-\_]+)/', urldecode($post->link), $matches)) {
 					$post->link = 'https://www.youtube.com/watch?v=' . $matches[1];
 					$post_content .= '<p>' . $post->link . '</p>';
 				}
-				if ((bool) preg_match('/youtube\.com.*?v=([\d\w]+)/', $post->link, $matches)) {
+				if ((bool) preg_match('/youtube\.com.*?v=([\d\w\-\_]+)/', $post->link, $matches)) {
 					$post_content .= '<p>' . 'https://www.youtube.com/watch?v=' . $matches[1] . '</p>';
 				}
 			}
