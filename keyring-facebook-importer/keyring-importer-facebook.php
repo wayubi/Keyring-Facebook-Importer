@@ -469,7 +469,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			else if (!empty($post->name))
 				$post_title = $post->name;
 			else {
-				$post->message = 'Untitled.';
+				$post->message = 'Untitled';
 				$post_title = $post->message;
 			}
 
