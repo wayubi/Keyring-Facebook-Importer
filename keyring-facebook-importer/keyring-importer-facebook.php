@@ -630,21 +630,21 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			$tags = $this->get_option( 'tags' );
 
-			switch ($post->type) {
-				case 'photo':
-					$tags[] = 'images';
-					break;
-				case 'video':
-					$tags[] = 'videos';
-					break;
-				case 'link':
-					$tags[] = 'links';
-					break;
-				case 'status':
-					$tags[] = 'statuses';
-				default:
-					break;
-			}
+			// switch ($post->type) {
+			// 	case 'photo':
+			// 		$tags[] = 'images';
+			// 		break;
+			// 	case 'video':
+			// 		$tags[] = 'videos';
+			// 		break;
+			// 	case 'link':
+			// 		$tags[] = 'links';
+			// 		break;
+			// 	case 'status':
+			// 		$tags[] = 'statuses';
+			// 	default:
+			// 		break;
+			// }
 
 			// Apply selected category
 			$post_category = array( $this->get_option( 'category' ) );
