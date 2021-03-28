@@ -20,7 +20,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 	);
 
 	var $api_endpoint_fields = array(
-		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2009-11-31',
+		'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2015-12-31',
 		'/albums' => 'id,name,created_time,updated_time,privacy,type',
 		'/photos' => 'id,name,created_time,updated_time,images',
 	);
@@ -498,23 +498,23 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			// Inject first image
 			if (!empty($photos)) {
 				if (!empty($videos) || stristr($post->link, 'youtube.com')) {
-					$post_content .= '<p class="vthumb"><img src="' . $photos[0] . '" /></p>';
+					$post_content .= '<p class="vthumb"><img src="' . $photos[0] . '" /></p>' . PHP_EOL . PHP_EOL;
 				} else {
-					$post_content .= '<p><img src="' . $photos[0] . '" /></p>';
+					$post_content .= '<img src="' . $photos[0] . '" />' . PHP_EOL . PHP_EOL;
 				}
 			}
 
 			// Insert first video
 			if (!empty($videos)) { // Embedded
-				$post_content .= '<p>[video src="' . esc_url( $videos[0] ) . '" loop="on"]</p>';
+				$post_content .= '[video src="' . esc_url( $videos[0] ) . '" loop="on"]' . PHP_EOL . PHP_EOL;
 			} else if (stristr($post->link, 'youtube.com') || stristr($post->message, 'youtube.com')) { // YouTube
 				$matches = array();
 				if ((bool) preg_match('/attribution_link.*?v=([\d\w\-\_]+)/', urldecode($post->link), $matches)) {
 					$post->link = 'https://www.youtube.com/watch?v=' . $matches[1];
-					$post_content .= '<p>' . $post->link . '</p>';
+					$post_content .= $post->link . PHP_EOL . PHP_EOL;
 				}
 				if ((bool) preg_match('/youtube\.com.*?v=([\d\w\-\_]+)/', $post->link, $matches)) {
-					$post_content .= '<p>' . 'https://www.youtube.com/watch?v=' . $matches[1] . '</p>';
+					$post_content .= 'https://www.youtube.com/watch?v=' . $matches[1] . PHP_EOL . PHP_EOL;
 				}
 			}
 
@@ -522,29 +522,27 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			foreach ($photos as $index => $photo) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<p><img src="' . $photo . '" /></p>';
+				$post_content .= '<img src="' . $photo . '" />' . PHP_EOL . PHP_EOL;
 			}
 
 			// Inject remaining videos
 			foreach ($videos as $index => $video) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<p>[video src="' . esc_url( $video ) . '" loop="on"]</p>';
+				$post_content .= '[video src="' . esc_url( $video ) . '" loop="on"]' . PHP_EOL . PHP_EOL;
 			}
 
 			// Continue with text
-
 			if (!empty($post->story))
-				$post_content .= '<p>' . make_clickable(addslashes($post->story)) . '</p>';
+				$post_content .= $this->make_clickable($post->story, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
 			if (!empty($post->message)) {
 				$message = $post->message;
 				$message = preg_replace('/(https{0,1}:\/\/www.facebook.com\/).+?\/posts\/(\d+)/', '$1$2', $message);
-				$post_content .= '<p>' . make_clickable(addslashes($message)) . '</p>';
+				$post_content .= $this->make_clickable($message, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 			}
 
 			// Prepare comments
-
 			$comment_trigger = $this->get_option( 'comment_trigger' );
 
 			if (!empty($comment_trigger)) {
@@ -564,39 +562,33 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=images');
 								$image = $this->fetchHighResImage($photo_object->images);
 								$photos[] = $image;
-								$post_content .= '<p><img src="' . $image . '" /></p>';
+								$post_content .= '<img src="' . $image . '" />' . PHP_EOL . PHP_EOL;
 							} else if ($attachment->type == 'video_inline') {
 								$this->log(__METHOD__ . ': service->request>comments/videos : ' . $attachment->target->id);
 								$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 								$videos[] = $video_object->source;
-								$post_content .= '<p>[video src="' . $video_object->source . '" loop="on"]</p>';
+								$post_content .= '[video src="' . $video_object->source . '" loop="on"]' . PHP_EOL . PHP_EOL;
 							}
 						}
 
 						$message = ltrim(substr($data->message, strlen($comment_trigger)));
 						if (!empty($message)) {
-							$message = preg_replace('/\n\n/', '</p><p>', $message);
-							if (!stristr($message, 'youtube.com') && !stristr($message, 'twitter.com')) {
-								$message = make_clickable($message);
-							}
-							$post_content .= '<p>' . addslashes($message) . '</p>';
+							// $message = preg_replace('/\n\n/', '</p><p>', $message);
+							$post_content .= $this->make_clickable($message, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 						}
 					}
 				}
 			}
 
 			// Prepare place
-
 			if (!empty($post->place) && !empty($post->place->location) && !empty($post->place->location->latitude) && !empty($post->place->location->longitude)) {
-
 				$bbox = $this->getOpenStreetMapBBox($post->place->location->latitude, $post->place->location->longitude, 1000);
 				$openStreetMapUrl = vsprintf('https://www.openstreetmap.org/export/embed.html?bbox=%.15f%%2C%.15f%%2C%.15f%%2C%.15f&amp;layer=mapnik&amp;marker=%.15f%%2C%.15f', $bbox);
-
-				$post_content .= '<p><iframe width="425" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="' . $openStreetMapUrl . '" style="border: 1px solid black"></iframe></p><p><a href="https://www.openstreetmap.org/#map=16/' . $post->place->location->latitude . '/' . $post->place->location->longitude . '">' . $post->place->location->latitude . ',' . $post->place->location->longitude . '</a></p>';
+				$post_content .= '<iframe width="425" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="' . $openStreetMapUrl . '" style="border: 1px solid black"></iframe>' . PHP_EOL . PHP_EOL;
+				$post_content .= '<a href="https://www.openstreetmap.org/#map=16/' . $post->place->location->latitude . '/' . $post->place->location->longitude . '">' . $post->place->location->latitude . ',' . $post->place->location->longitude . '</a>' . PHP_EOL . PHP_EOL;
 			}
 
 			// Prepare blockquote
-
 			if (
 				$post->link != $post->permalink_url
 				&& ( !empty($post->name) || !empty($post->description) )
@@ -607,21 +599,18 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if (!empty($post->name)) {
 					if (!empty($post->description)) {
 						if (($this->prepare_post_title($post->name) != $this->prepare_post_title($post->description))) {
-							$post_content .= '<p>' . addslashes($post->name) . '</p>';
+							$post_content .= $post->name . PHP_EOL . PHP_EOL;
 						}
 					} else {
-						$post_content .= '<p>' . addslashes($post->name) . '</p>';
+						$post_content .= $post->name . PHP_EOL . PHP_EOL;
 					}
 				}
 
 				if (!empty($post->description))
-					$post_content .= '<p>' . make_clickable(addslashes($post->description)) . '</p>';
-
-				if (stristr($post->link, 'twitter.com'))
-					$post_content .= '<p>' . $post->link . '</p>';
+					$post_content .= $this->make_clickable($post->description, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
 				if (!empty($post->link))
-					$post_content .= '<p>' . make_clickable($post->link) . '</p>';
+					$post_content .= $this->make_clickable($post->link, array('twitter.com')) . PHP_EOL . PHP_EOL;
 
 				$post_content .= '</blockquote>';
 			}
@@ -841,12 +830,12 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$post['post_content'] = '';
 
 			if (!empty($post['photos']))
-				$post['post_content'] .= '<p><img src="' . $post['photos'] . '" /></p><br>';
+				$post['post_content'] .= '<img src="' . $post['photos'] . '" />' . PHP_EOL . PHP_EOL;
 
 			if (!empty($photo->name))
-				$post['post_content'] .= '<p>' . make_clickable($photo->name) . '</p><br>';
+				$post['post_content'] .= $this->make_clickable($photo->name) . PHP_EOL . PHP_EOL;
 
-			$post['post_content'] .= '<p><a href="https://www.facebook.com/' . $facebook_id . '">Facebook</a>' . '</p><br>';
+			$post['post_content'] .= '<a href="https://www.facebook.com/' . $facebook_id . '">Facebook</a>' . PHP_EOL . PHP_EOL;
 
 			$this->posts[] = $post;
 		}
@@ -1378,6 +1367,27 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 		]; // 0 = minlon, 1 = minlat, 2 = maxlon, 3 = maxlat, 4,5 = original val (marker)
 	}
 
+	/**
+	 * Wrapper for make_clickable with domain exemptions.
+	 * 
+	 * @since 2021-03-28
+	 * 
+	 * @param string $text    Text to make clickable
+	 * @param array  $domains Domain to exempt
+	 */
+	private function make_clickable($text, $domains = array()) {
+		$this->log(__METHOD__);
+
+		foreach($domains as $domain) {
+			$text = preg_replace('/http(s*:\/\/(?:www.)*' . $domain . ')/', 'hxxp${1}', $text);
+		}
+
+		$text = make_clickable($text);
+		$text = str_replace('hxxp', 'http', $text);
+
+		return $text;
+	}
+
 	private function prepare_post_title($post_title) {
 		$this->log(__METHOD__);
 
@@ -1391,8 +1401,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			if (!in_array(substr($post_title, -1), array('.', '?', '!', ',', ';', ':')))
 				$post_title .= '...';
 		}
-
-		$post_title = addslashes($post_title);
 
 		return $post_title;
 	}
