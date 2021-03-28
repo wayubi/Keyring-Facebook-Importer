@@ -424,7 +424,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 							if ($data->title == 'Mobile Uploads')
 								unset($post->name);
 
-						} else if ($data->type == 'video_inline' && !empty($data->media->source)) {
+						} else if ( ($data->type == 'video_inline' || $data->type == 'animated_image_video' ) && !empty($data->media->source)) {
 							$this->log(__METHOD__ . ': service->request>videos : ' . $data->target->id);
 							$video_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=source,thumbnails');
 							$videos[] = $video_object->source;
@@ -506,7 +506,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Insert first video
 			if (!empty($videos)) { // Embedded
-				$post_content .= '<p>' . esc_url( $videos[0] ) . '</p>';
+				$post_content .= '<p>[video src="' . esc_url( $videos[0] ) . '" loop="on"]</p>';
 			} else if (stristr($post->link, 'youtube.com') || stristr($post->message, 'youtube.com')) { // YouTube
 				$matches = array();
 				if ((bool) preg_match('/attribution_link.*?v=([\d\w\-\_]+)/', urldecode($post->link), $matches)) {
@@ -529,7 +529,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			foreach ($videos as $index => $video) {
 				if ($index == 0)
 					continue;
-				$post_content .= '<p>' . esc_url( $video ) . '</p>';
+				$post_content .= '<p>[video src="' . esc_url( $video ) . '" loop="on"]</p>';
 			}
 
 			// Continue with text
@@ -569,7 +569,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 								$this->log(__METHOD__ . ': service->request>comments/videos : ' . $attachment->target->id);
 								$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 								$videos[] = $video_object->source;
-								$post_content .= '<p>' . $video_object->source . '</p>';
+								$post_content .= '<p>[video src="' . $video_object->source . '" loop="on"]</p>';
 							}
 						}
 
@@ -627,24 +627,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			}
 
 			// Prepare tags
-
 			$tags = $this->get_option( 'tags' );
-
-			// switch ($post->type) {
-			// 	case 'photo':
-			// 		$tags[] = 'images';
-			// 		break;
-			// 	case 'video':
-			// 		$tags[] = 'videos';
-			// 		break;
-			// 	case 'link':
-			// 		$tags[] = 'links';
-			// 		break;
-			// 	case 'status':
-			// 		$tags[] = 'statuses';
-			// 	default:
-			// 		break;
-			// }
 
 			// Apply selected category
 			$post_category = array( $this->get_option( 'category' ) );
