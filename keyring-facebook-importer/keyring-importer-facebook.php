@@ -341,7 +341,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if ((bool) preg_match('/^.*?\scover photo$/', $post->name)) {
 					$post->message = 'Cover';
 					unset($post->name);
-			}
+				}
 
 				if ((bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name)) {
 					$post->message = 'Photos';
