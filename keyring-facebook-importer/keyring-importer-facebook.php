@@ -573,10 +573,11 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			// Prepare place
 			if (!empty($post->place) && !empty($post->place->location) && !empty($post->place->location->latitude) && !empty($post->place->location->longitude)) {
-				$bbox = $this->getOpenStreetMapBBox($post->place->location->latitude, $post->place->location->longitude, 1000);
+				$place_name = !empty($post->place->name) ? $post->place->name : $post->place->location->latitude . ',' . $post->place->location->longitude;
+				$bbox = $this->getOpenStreetMapBBox($post->place->location->latitude, $post->place->location->longitude, 10000);
 				$openStreetMapUrl = vsprintf('https://www.openstreetmap.org/export/embed.html?bbox=%.15f%%2C%.15f%%2C%.15f%%2C%.15f&amp;layer=mapnik&amp;marker=%.15f%%2C%.15f', $bbox);
 				$post_content .= '<iframe width="425" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="' . $openStreetMapUrl . '" style="border: 1px solid black"></iframe>' . PHP_EOL . PHP_EOL;
-				$post_content .= '<a href="https://www.openstreetmap.org/#map=16/' . $post->place->location->latitude . '/' . $post->place->location->longitude . '">' . $post->place->location->latitude . ',' . $post->place->location->longitude . '</a>' . PHP_EOL . PHP_EOL;
+				$post_content .= '<a href="https://www.openstreetmap.org/#map=16/' . $post->place->location->latitude . '/' . $post->place->location->longitude . '">' . $place_name . '</a>' . PHP_EOL . PHP_EOL;
 			}
 
 			// Prepare blockquote
