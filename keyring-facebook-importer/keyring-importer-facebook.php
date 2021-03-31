@@ -527,7 +527,7 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 
 			if (!empty($post->message)) {
 				$message = $post->message;
-				$message = preg_replace('/(https{0,1}:\/\/www.facebook.com\/).+?\/posts\/(\d+)/', '$1$2', $message);
+				$message = preg_replace('/(https{0,1}:\/\/www.facebook.com).+?(posts\/\d+)/', '$1/' . $this->service->get_token()->get_meta('user_id') . '/$2', $message);
 				$post_content .= $this->make_clickable($message, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 			}
 
