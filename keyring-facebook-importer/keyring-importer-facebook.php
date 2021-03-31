@@ -353,11 +353,6 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 				if ((bool) preg_match('/^' . preg_quote($post->name, '/'). '.*?$/', $this->service->get_token()->get_display())) unset($post->name);
 			}
 
-			// Twitter cleanup.
-			if (stristr($post->link, 'twitter.com')) {
-				$post->description = rtrim(ltrim($post->description, '“'), '”');
-			}
-
 			// Prepare media
 
 			$videos = array();
@@ -1377,7 +1372,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 			$text = preg_replace('/http(s*:\/\/(?:www.)*' . $domain . ')/', 'hxxp${1}', $text);
 		}
 
+		$text = str_replace('”', ' ”', $text);
 		$text = make_clickable($text);
+		$text = str_replace(' ”', '”', $text);
 		$text = str_replace('hxxp', 'http', $text);
 
 		return $text;
