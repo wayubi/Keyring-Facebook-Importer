@@ -404,6 +404,9 @@ class Keyring_Facebook_Importer extends Keyring_Importer_Base {
 					} else if ($data->type == 'goodwill_shared_card') {
 						$post->name = $data->title;
 						$post->link = $data->url;
+					} else if ($data->type == 'year_in_review') {
+						$post->name = 'Year in Review';
+						$post->link = $data->url;
 					} else if ($data->type == 'profile_media' || $data->title == 'Profile Pictures') {
 						$post->message = 'Profile';
 						$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
