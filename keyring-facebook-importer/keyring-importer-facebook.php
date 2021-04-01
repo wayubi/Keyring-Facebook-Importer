@@ -20,7 +20,7 @@ function Keyring_Facebook_Importer() {
 		);
 
 		var $api_endpoint_fields = array(
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2017-12-31',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2006-12-31',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -30,8 +30,12 @@ function Keyring_Facebook_Importer() {
 		var $current_endpoint = null;
 		var $endpoint_prefix = null;
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 */
 		function __construct() {
 			$this->log(__METHOD__);
+
 			$rv = parent::__construct();
 
 			if ( $this->get_option( 'facebook_page', '' ) ) {
@@ -46,8 +50,13 @@ function Keyring_Facebook_Importer() {
 			return $rv;
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		function custom_options() {
 			$this->log(__METHOD__);
+
 			?>
 			<tr valign="top">
 				<th scope="row">
@@ -124,8 +133,13 @@ function Keyring_Facebook_Importer() {
 			<?php
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		function handle_request_options() {
 			$this->log(__METHOD__);
+
 			// Validate options and store them so they can be used in auto-imports
 			if ( empty( $_POST['category'] ) || !ctype_digit( $_POST['category'] ) )
 				$this->error( __( "Make sure you select a valid category to import your statuses into." ) );
@@ -158,6 +172,10 @@ function Keyring_Facebook_Importer() {
 			}
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		function build_request_url() {
 			$this->log(__METHOD__);
 
@@ -200,9 +218,13 @@ function Keyring_Facebook_Importer() {
 		/**
 		 * Grab a chunk of data from the remote service and process it into posts, and handle actually importing as well.
 		 * Keeps track of 'state' in the DB.
+		 * 
+		 * @author beaulebens <https://github.com/beaulebens>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		function import() {
 			$this->log(__METHOD__);
+
 			defined( 'WP_IMPORTING' ) or define( 'WP_IMPORTING', true );
 			do_action( 'import_start' );
 			$num = 0;
@@ -259,8 +281,12 @@ function Keyring_Facebook_Importer() {
 			return true;
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 */
 		function extract_posts_from_data( $raw ) {
 			$this->log(__METHOD__);
+
 			global $wpdb;
 
 			$importdata = $raw;
@@ -304,6 +330,10 @@ function Keyring_Facebook_Importer() {
 			}
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function extract_posts_from_data_posts( $importdata ) {
 			$this->log(__METHOD__);
 			global $wpdb;
@@ -475,11 +505,11 @@ function Keyring_Facebook_Importer() {
 
 				$post_title = $this->prepare_post_title($post_title);
 
-				// var_dump($post);
-				// var_dump($post->attachments->data[0]);
-				// var_dump($videos);
-				// var_dump($photos);
-				// exit;
+				var_dump($post);
+				var_dump($post->attachments->data[0]);
+				var_dump($videos);
+				var_dump($photos);
+				exit;
 
 				// Prepare post body
 
@@ -646,7 +676,8 @@ function Keyring_Facebook_Importer() {
 
 		/**
 		 * Cache album images
-		 * @since 2021-01-27
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function cache_album_images() {
 			$this->log(__METHOD__);
@@ -674,7 +705,8 @@ function Keyring_Facebook_Importer() {
 
 		/**
 		 * Cache album images subroutine
-		 * @since 2021-01-27
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function cache_album_images_walk($url, &$cache_album_images, $cache_album_images_last_run) {
 			$this->log(__METHOD__);
@@ -701,9 +733,13 @@ function Keyring_Facebook_Importer() {
 
 		/**
 		 * @todo do $import_url
+		 * 
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function extract_posts_from_data_albums( $importdata ) {
 			$this->log(__METHOD__);
+
 			global $wpdb;
 
 			$import_private_posts = (bool) $this->get_option( 'import_private_posts' );
@@ -774,6 +810,9 @@ function Keyring_Facebook_Importer() {
 		/**
 		 * @todo skip $import_private_posts
 		 * @todo do $import_url
+		 * 
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function extract_posts_from_data_photos( $importdata ) {
 			$this->log(__METHOD__);
@@ -831,8 +870,13 @@ function Keyring_Facebook_Importer() {
 			}
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		function insert_posts() {
 			$this->log(__METHOD__);
+
 			global $wpdb;
 			$imported = 0;
 			$skipped  = 0;
@@ -912,14 +956,23 @@ function Keyring_Facebook_Importer() {
 			return array( 'imported' => $imported, 'skipped' => $skipped );
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 */
 		private function rotate_endpoint() {
 			$this->log(__METHOD__);
+
 			$this->set_option( 'endpoint_index', ( ( $this->get_option( 'endpoint_index', 0 ) + 1 ) % count( $this->api_endpoints ) ) );
 			$this->current_endpoint = $this->endpoint_prefix . $this->api_endpoints[ $this->get_option( 'endpoint_index' ) ];
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function retrieve_pages() {
 			$this->log(__METHOD__);
+
 			$api_url = "https://graph.facebook.com/me/accounts?fields=id,name,category";
 
 			$pages = array();
@@ -942,8 +995,13 @@ function Keyring_Facebook_Importer() {
 			return $pages;
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function retrieve_album_photos( $album_id, $since = null ) {
 			$this->log(__METHOD__);
+
 			// Get photos
 			$api_url = "https://graph.facebook.com/" . $album_id . "/photos?fields=id,name,link,images,created_time,updated_time";
 
@@ -954,6 +1012,10 @@ function Keyring_Facebook_Importer() {
 			return $photos;
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function _retrieve_album_photos( $api_url, &$photos, $since = null ) {
 			$this->log(__METHOD__);
 
@@ -993,10 +1055,30 @@ function Keyring_Facebook_Importer() {
 		}
 
 		/**
-		 * @since 2021-01-26
+		 * This is a helper for downloading/attaching/inserting media into a post when it's
+		 * being imported. See Flickr/Instagram for examples.
+		 * 
+		 * @param Array of $urls
+		 * @param Int post ID
+		 * @param Array post object
+		 * @param String size of images (large, medium, small)
+		 * @param String what to do with the images. Always updated inline. Optionally append/prepend if not found in content
+		 *
+		 * @author beaulebens <https://github.com/beaulebens>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
-		public function sideload_media( $urls, $post_id, $post, $size = 'large', $where = 'prepend' ) {
+		private function sideload_media( $urls, $post_id, $post, $size = 'large', $where = 'prepend' ) {
 			$this->log(__METHOD__);
+
+			if ( ! function_exists( 'media_sideload_image' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/media.php';
+			}
+			if ( ! function_exists( 'download_url' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			if ( ! function_exists( 'wp_read_image_metadata' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+			}
 
 			if ( ! is_array( $urls ) ) {
 				$urls = array( $urls );
@@ -1055,10 +1137,24 @@ function Keyring_Facebook_Importer() {
 		}
 
 		/**
-		 * @since 2021-01-26
+		 * Similar to sideload_media, but a little simpler. This will download a video
+		 * from a URL, and then embed it into a post by replacing the same URL
+		 * 
+		 * @author beaulebens <https://github.com/beaulebens>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		public function sideload_video( $urls, $post_id ) {
 			$this->log(__METHOD__);
+
+			if ( ! function_exists( 'media_sideload_image' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/media.php';
+			}
+			if ( ! function_exists( 'download_url' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			if ( ! function_exists( 'wp_read_image_metadata' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/image.php';
+			}
 
 			if ( ! is_array( $urls ) ) {
 				$urls = array( $urls );
@@ -1095,8 +1191,13 @@ function Keyring_Facebook_Importer() {
 			}
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function sideload_photo_to_album( $photo, $album_id ) {
 			$this->log(__METHOD__);
+
 			global $wpdb;
 			
 			$photo_id = $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $photo['facebook_id'] ) );
@@ -1112,8 +1213,13 @@ function Keyring_Facebook_Importer() {
 			return $photo_id;
 		}
 
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function sideload_album_photo( $file, $post_id, $desc = '', $post_date = null, $post_date_gmt = null ) {
 			$this->log(__METHOD__);
+
 			if ( !function_exists( 'media_handle_sideload' ) )
 				require_once ABSPATH . 'wp-admin/includes/media.php';
 			if ( !function_exists( 'download_url' ) )
@@ -1174,8 +1280,13 @@ function Keyring_Facebook_Importer() {
 		 * @param array  $post_data  Optional. Post data to override. Default empty array.
 		 * @return string|int|WP_Error Populated HTML img tag, attachment ID, or attachment source
 		 *                             on success, WP_Error object otherwise.
+		 * 
+		 * @author Wordpress </wp-admin/includes/media.php>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function media_sideload_image( $file, $post_id = 0, $desc = null, $return = 'html', $post_data = array() ) {
+			$this->log(__METHOD__);
+
 			if ( ! empty( $file ) ) {
 
 				$allowed_extensions = array( 'jpg', 'jpeg', 'jpe', 'png', 'gif' );
@@ -1253,18 +1364,24 @@ function Keyring_Facebook_Importer() {
 		}
 
 		/**
+		 * 
 		 * Handles a side-loaded file in the same way as an uploaded file is handled by media_handle_upload().
 		 *
 		 * @since 2.6.0
 		 * @since 5.3.0 The `$post_id` parameter was made optional.
 		 *
-		 * @param array  $file_array Array similar to a `$_FILES` upload array.
-		 * @param int    $post_id    Optional. The post ID the media is associated with.
-		 * @param string $desc       Optional. Description of the side-loaded file. Default null.
-		 * @param array  $post_data  Optional. Post data to override. Default empty array.
+		 * @param string[] $file_array Array that represents a `$_FILES` upload array.
+		 * @param int      $post_id    Optional. The post ID the media is associated with.
+		 * @param string   $desc       Optional. Description of the side-loaded file. Default null.
+		 * @param array    $post_data  Optional. Post data to override. Default empty array.
 		 * @return int|WP_Error The ID of the attachment or a WP_Error on failure.
+		 * 
+		 * @author Wordpress </wp-admin/includes/media.php>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function media_handle_sideload( $file_array, $post_id = 0, $desc = null, $post_data = array() ) {
+			$this->log(__METHOD__);
+
 			$overrides = array( 'test_form' => false );
 
 			$time = current_time( 'mysql' );
@@ -1329,21 +1446,17 @@ function Keyring_Facebook_Importer() {
 
 			return $attachment_id;
 		}
-
-		/**
-		 * @since 2021-02-05
-		 * @author https://help.openstreetmap.org/questions/20335/embedded-html-displays-zoomed-out
-		 */
-		private function getOpenStreetMapCoordOffset($what, $lat, $lon, $offset) {
-			$earthRadius = 6378137;
-			$coord = [0 => $lat, 1 => $lon];
-			$radOff = $what === 0 ? $offset / $earthRadius : $offset / ($earthRadius * cos(M_PI * $coord[0] / 180));
-			return $coord[$what] + $radOff * 180 / M_PI;    
-		}
 		
 		/**
-		 * @since 2021-02-05
-		 * @author https://help.openstreetmap.org/questions/20335/embedded-html-displays-zoomed-out
+		 * Gets open street map bounding box data.
+		 * 
+		 * @param float $lat Latitude.
+		 * @param float $lon Longitude.
+		 * @param int $area Area in meters.
+		 * @return array Bounding box data.
+		 * 
+		 * @author krzysiunet <https://help.openstreetmap.org/users/12638/krzysiunet>
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function getOpenStreetMapBBox($lat, $lon, $area) {
 			$offset = $area / 2;
@@ -1358,12 +1471,32 @@ function Keyring_Facebook_Importer() {
 		}
 
 		/**
+		 * Gets coordinates from offset
+		 * 
+		 * @param int $what What (?).
+		 * @param float $lat Latitude.
+		 * @param float $lon Longitude.
+		 * @param float $offset Area / 2.
+		 * @return float Coordinate offset data.
+		 * 
+		 * @author krzysiunet <https://help.openstreetmap.org/users/12638/krzysiunet>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
+		private function getOpenStreetMapCoordOffset($what, $lat, $lon, $offset) {
+			$earthRadius = 6378137;
+			$coord = [0 => $lat, 1 => $lon];
+			$radOff = $what === 0 ? $offset / $earthRadius : $offset / ($earthRadius * cos(M_PI * $coord[0] / 180));
+			return $coord[$what] + $radOff * 180 / M_PI;    
+		}
+
+		/**
 		 * Wrapper for make_clickable with domain exemptions.
 		 * 
-		 * @since 2021-03-28
+		 * @param string $text Text to make clickable.
+		 * @param array $domains Domains to exempt where value is the domain.
+		 * @return string Text made clickable.
 		 * 
-		 * @param string $text    Text to make clickable
-		 * @param array  $domains Domain to exempt
+		 * @author wayubi <https://github.com/wayubi>
 		 */
 		private function make_clickable($text, $domains = array()) {
 			$this->log(__METHOD__);
@@ -1380,6 +1513,14 @@ function Keyring_Facebook_Importer() {
 			return $text;
 		}
 
+		/**
+		 * Prepare post title.
+		 * 
+		 * @param string $post_title Post title to prepare.
+		 * @return string Prepared post title.
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function prepare_post_title($post_title) {
 			$this->log(__METHOD__);
 
@@ -1397,6 +1538,14 @@ function Keyring_Facebook_Importer() {
 			return $post_title;
 		}
 
+		/**
+		 * Fetch high res image from images array.
+		 * 
+		 * @param array $images Images where key is resolution and value is source.
+		 * @return string High resolution image.
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function fetchHighResImage($images) {
 			$this->log(__METHOD__);
 
@@ -1409,10 +1558,24 @@ function Keyring_Facebook_Importer() {
 			return array_shift($i);
 		}
 
+		/**
+		 * Fetch UTC Timestamp.
+		 * 
+		 * @return int UTC Timestamp.
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function fetchUtcTimestamp() {
 			return strtotime(gmdate("M d Y H:i:s", time()));
 		}
 
+		/**
+		 * Log text to file.
+		 * 
+		 * @param string $s Text to log.
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
+		 */
 		private function log($s) {
 			file_put_contents(static::LOG_PATH, '[' . date('Y-m-d H:i:s') . '] ' . $s . PHP_EOL, FILE_APPEND);
 		}
@@ -1420,6 +1583,9 @@ function Keyring_Facebook_Importer() {
 
 } // end function Keyring_Facebook_Importer
 
+/**
+ * @author cfinke <https://github.com/cfinke>
+ */
 add_action( 'init', function() {
 	Keyring_Facebook_Importer(); // Load the class code from above
 	keyring_register_importer(
@@ -1430,6 +1596,9 @@ add_action( 'init', function() {
 	);
 } );
 
+/**
+ * @author cfinke <https://github.com/cfinke>
+ */
 add_filter( 'keyring_facebook_scope', function ( $scopes ) {
 	$scopes[] = 'user_posts';
 	$scopes[] = 'user_photos';
