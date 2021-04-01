@@ -101,7 +101,7 @@ function Keyring_Facebook_Importer() {
 		 * @author cfinke <https://github.com/cfinke>
 		 * @author wayubi <https://github.com/wayubi>
 		 */
-		private function custom_options() {
+		public function custom_options() {
 			$this->log(__METHOD__);
 
 			?>
@@ -517,7 +517,7 @@ function Keyring_Facebook_Importer() {
 				var_dump($post->attachments->data[0]);
 				var_dump($videos);
 				var_dump($photos);
-				exit;
+				// exit;
 
 				// Prepare post body
 
