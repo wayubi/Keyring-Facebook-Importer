@@ -1,8 +1,5 @@
 <?php
 
-// This is a horrible hack, because WordPress doesn't support dependencies/load-order.
-// We wrap our entire class definition in a function, and then only call that on a hook
-// where we know that the class we're extending is available. *hangs head in shame*
 function Keyring_Facebook_Importer() {
 
 	class Keyring_Facebook_Importer extends Keyring_Importer_Base {
@@ -13,27 +10,38 @@ function Keyring_Facebook_Importer() {
 		const REQUEST_TIMEOUT   = 600; // Number of seconds to wait before another request
 		const LOG_PATH          = '/tmp/log.txt';
 
-		var $api_endpoints = array(
+		/**
+		 * @var array Endpoints.
+		 */
+		private $api_endpoints = array(
 			'/posts',
 			// '/albums',
 			// '/photos',
 		);
 
-		var $api_endpoint_fields = array(
+		/**
+		 * @var array Endpoint fields.
+		 */
+		private $api_endpoint_fields = array(
 			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2006-12-31',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
 
-		// '/posts'  => 'id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,type&until=2020-06-01'
+		/**
+		 * @var string Current endpoint.
+		 */
+		private $current_endpoint = null;
 
-		var $current_endpoint = null;
-		var $endpoint_prefix = null;
+		/**
+		 * @var string Endpoint prefix.
+		 */
+		private $endpoint_prefix = null;
 
 		/**
 		 * @author cfinke <https://github.com/cfinke>
 		 */
-		function __construct() {
+		public function __construct() {
 			$this->log(__METHOD__);
 
 			$rv = parent::__construct();
@@ -54,7 +62,46 @@ function Keyring_Facebook_Importer() {
 		 * @author cfinke <https://github.com/cfinke>
 		 * @author wayubi <https://github.com/wayubi>
 		 */
-		function custom_options() {
+		public function handle_request_options() {
+			$this->log(__METHOD__);
+
+			// Validate options and store them so they can be used in auto-imports
+			if ( empty( $_POST['category'] ) || !ctype_digit( $_POST['category'] ) )
+				$this->error( __( "Make sure you select a valid category to import your statuses into." ) );
+
+			if ( empty( $_POST['author'] ) || !ctype_digit( $_POST['author'] ) )
+				$this->error( __( "You must select an author to assign to all statuses." ) );
+
+			if ( isset( $_POST['auto_import'] ) )
+				$_POST['auto_import'] = true;
+			else
+				$_POST['auto_import'] = false;
+
+			// If there were errors, output them, otherwise store options and start importing
+			if ( count( $this->errors ) ) {
+				$this->step = 'options';
+			} else {
+				$this->set_option( array(
+					'category'                 => (int) $_POST['category'],
+					'tags'                     => explode( ',', $_POST['tags'] ),
+					'author'                   => (int) $_POST['author'],
+					'auto_import'              => $_POST['auto_import'],
+					'facebook_page'            => $_POST['facebook_page'],
+					'fb_post_status'           => $_POST['fb_post_status'],
+					'import_private_posts'     => $_POST['import_private_posts'],
+					'cache_album_images_reset' => $_POST['cache_album_images_reset'],
+					'comment_trigger'          => $_POST['comment_trigger']
+				) );
+
+				$this->step = 'import';
+			}
+		}
+
+		/**
+		 * @author cfinke <https://github.com/cfinke>
+		 * @author wayubi <https://github.com/wayubi>
+		 */
+		private function custom_options() {
 			$this->log(__METHOD__);
 
 			?>
@@ -137,46 +184,7 @@ function Keyring_Facebook_Importer() {
 		 * @author cfinke <https://github.com/cfinke>
 		 * @author wayubi <https://github.com/wayubi>
 		 */
-		function handle_request_options() {
-			$this->log(__METHOD__);
-
-			// Validate options and store them so they can be used in auto-imports
-			if ( empty( $_POST['category'] ) || !ctype_digit( $_POST['category'] ) )
-				$this->error( __( "Make sure you select a valid category to import your statuses into." ) );
-
-			if ( empty( $_POST['author'] ) || !ctype_digit( $_POST['author'] ) )
-				$this->error( __( "You must select an author to assign to all statuses." ) );
-
-			if ( isset( $_POST['auto_import'] ) )
-				$_POST['auto_import'] = true;
-			else
-				$_POST['auto_import'] = false;
-
-			// If there were errors, output them, otherwise store options and start importing
-			if ( count( $this->errors ) ) {
-				$this->step = 'options';
-			} else {
-				$this->set_option( array(
-					'category'                 => (int) $_POST['category'],
-					'tags'                     => explode( ',', $_POST['tags'] ),
-					'author'                   => (int) $_POST['author'],
-					'auto_import'              => $_POST['auto_import'],
-					'facebook_page'            => $_POST['facebook_page'],
-					'fb_post_status'           => $_POST['fb_post_status'],
-					'import_private_posts'     => $_POST['import_private_posts'],
-					'cache_album_images_reset' => $_POST['cache_album_images_reset'],
-					'comment_trigger'          => $_POST['comment_trigger']
-				) );
-
-				$this->step = 'import';
-			}
-		}
-
-		/**
-		 * @author cfinke <https://github.com/cfinke>
-		 * @author wayubi <https://github.com/wayubi>
-		 */
-		function build_request_url() {
+		public function build_request_url() {
 			$this->log(__METHOD__);
 
 			$endpoint_prefix_length = strlen($this->endpoint_prefix);
@@ -222,7 +230,7 @@ function Keyring_Facebook_Importer() {
 		 * @author beaulebens <https://github.com/beaulebens>
 		 * @author wayubi <https://github.com/wayubi>
 		 */
-		function import() {
+		public function import() {
 			$this->log(__METHOD__);
 
 			defined( 'WP_IMPORTING' ) or define( 'WP_IMPORTING', true );
@@ -284,7 +292,7 @@ function Keyring_Facebook_Importer() {
 		/**
 		 * @author cfinke <https://github.com/cfinke>
 		 */
-		function extract_posts_from_data( $raw ) {
+		public function extract_posts_from_data( $raw ) {
 			$this->log(__METHOD__);
 
 			global $wpdb;
@@ -675,63 +683,6 @@ function Keyring_Facebook_Importer() {
 		}
 
 		/**
-		 * Cache album images
-		 * 
-		 * @author wayubi <https://github.com/wayubi>
-		 */
-		private function cache_album_images() {
-			$this->log(__METHOD__);
-
-			$cache_album_images_reset       = (bool) $this->get_option('cache_album_images_reset');
-
-			$cache_album_images             = !$cache_album_images_reset ? (array) $this->get_option('cache_album_images') : array();
-			$cache_album_images_last_run    = !$cache_album_images_reset ? (int) $this->get_option('cache_album_images_last_run') : 0;
-			$cache_album_images_current_run = $this->fetchUtcTimestamp();
-
-			$albums = $this->service->request('https://graph.facebook.com/' . $this->endpoint_prefix . '/albums?fields=id,name,created_time,updated_time,privacy,type');
-			foreach ($albums->data as $album) {
-
-				if ($album->name != 'Timeline Photos') continue;
-
-				$url = 'https://graph.facebook.com/' . $album->id . '/photos?fields=id,name,link,images,created_time,updated_time';
-				while ($url = $this->cache_album_images_walk($url, $cache_album_images, $cache_album_images_last_run));
-			}
-
-			$this->set_option('cache_album_images', $cache_album_images);
-			$this->set_option('cache_album_images_last_run', $cache_album_images_current_run);
-
-			return $cache_album_images;
-		}
-
-		/**
-		 * Cache album images subroutine
-		 * 
-		 * @author wayubi <https://github.com/wayubi>
-		 */
-		private function cache_album_images_walk($url, &$cache_album_images, $cache_album_images_last_run) {
-			$this->log(__METHOD__);
-			
-			$photos = $this->service->request($url, array('method' => $this->request_method, 'timeout' => 10));
-			if (empty($photos) || empty($photos->data)) {
-				return false;
-			}
-
-			foreach ($photos->data as $photo) {
-				if ($cache_album_images_last_run < strtotime($photo->updated_time)) {
-					$this->log(__METHOD__ . ': add_to_cache : ' . $photo->id);
-					$cache_album_images[$photo->id] = $this->fetchHighResImage($photo->images);
-				} else {
-					return false;
-				}
-			}
-
-			if (isset($photos->paging) && !empty($photos->paging->next))
-				return $photos->paging->next;
-
-			return false;
-		}
-
-		/**
 		 * @todo do $import_url
 		 * 
 		 * @author cfinke <https://github.com/cfinke>
@@ -874,7 +825,7 @@ function Keyring_Facebook_Importer() {
 		 * @author cfinke <https://github.com/cfinke>
 		 * @author wayubi <https://github.com/wayubi>
 		 */
-		function insert_posts() {
+		public function insert_posts() {
 			$this->log(__METHOD__);
 
 			global $wpdb;
@@ -1067,7 +1018,7 @@ function Keyring_Facebook_Importer() {
 		 * @author beaulebens <https://github.com/beaulebens>
 		 * @author wayubi <https://github.com/wayubi>
 		 */
-		private function sideload_media( $urls, $post_id, $post, $size = 'large', $where = 'prepend' ) {
+		public function sideload_media( $urls, $post_id, $post, $size = 'large', $where = 'prepend' ) {
 			$this->log(__METHOD__);
 
 			if ( ! function_exists( 'media_sideload_image' ) ) {
@@ -1446,7 +1397,64 @@ function Keyring_Facebook_Importer() {
 
 			return $attachment_id;
 		}
-		
+
+		/**
+		 * Cache album images
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
+		 */
+		private function cache_album_images() {
+			$this->log(__METHOD__);
+
+			$cache_album_images_reset       = (bool) $this->get_option('cache_album_images_reset');
+
+			$cache_album_images             = !$cache_album_images_reset ? (array) $this->get_option('cache_album_images') : array();
+			$cache_album_images_last_run    = !$cache_album_images_reset ? (int) $this->get_option('cache_album_images_last_run') : 0;
+			$cache_album_images_current_run = $this->fetchUtcTimestamp();
+
+			$albums = $this->service->request('https://graph.facebook.com/' . $this->endpoint_prefix . '/albums?fields=id,name,created_time,updated_time,privacy,type');
+			foreach ($albums->data as $album) {
+
+				if ($album->name != 'Timeline Photos') continue;
+
+				$url = 'https://graph.facebook.com/' . $album->id . '/photos?fields=id,name,link,images,created_time,updated_time';
+				while ($url = $this->cache_album_images_walk($url, $cache_album_images, $cache_album_images_last_run));
+			}
+
+			$this->set_option('cache_album_images', $cache_album_images);
+			$this->set_option('cache_album_images_last_run', $cache_album_images_current_run);
+
+			return $cache_album_images;
+		}
+
+		/**
+		 * Cache album images subroutine
+		 * 
+		 * @author wayubi <https://github.com/wayubi>
+		 */
+		private function cache_album_images_walk($url, &$cache_album_images, $cache_album_images_last_run) {
+			$this->log(__METHOD__);
+			
+			$photos = $this->service->request($url, array('method' => $this->request_method, 'timeout' => 10));
+			if (empty($photos) || empty($photos->data)) {
+				return false;
+			}
+
+			foreach ($photos->data as $photo) {
+				if ($cache_album_images_last_run < strtotime($photo->updated_time)) {
+					$this->log(__METHOD__ . ': add_to_cache : ' . $photo->id);
+					$cache_album_images[$photo->id] = $this->fetchHighResImage($photo->images);
+				} else {
+					return false;
+				}
+			}
+
+			if (isset($photos->paging) && !empty($photos->paging->next))
+				return $photos->paging->next;
+
+			return false;
+		}
+
 		/**
 		 * Gets open street map bounding box data.
 		 * 
