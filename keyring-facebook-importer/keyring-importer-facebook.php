@@ -837,12 +837,9 @@ function Keyring_Facebook_Importer() {
 
 				if (
 					!$facebook_id
-				||
-					$wpdb->get_var($wpdb->prepare("SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id))
-				||
-					$post_id = post_exists($post_title, $post_content, $post_date)
-				) {
-					// Looks like a duplicate
+					|| $wpdb->get_var($wpdb->prepare("SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = 'facebook_id' AND meta_value = %s", $facebook_id))
+					|| $post_id = post_exists($post_title, $post_content, $post_date)
+				) { // Looks like a duplicate
 					$skipped++;
 				} else {
 					$post = apply_filters('keyring_facebook_importer_post', $post);
@@ -1408,9 +1405,18 @@ function Keyring_Facebook_Importer() {
 
 			$cache_album_images_reset       = (bool) $this->get_option('cache_album_images_reset');
 
-			$cache_album_images             = !$cache_album_images_reset ? (array) $this->get_option('cache_album_images') : array();
-			$cache_album_images_last_run    = !$cache_album_images_reset ? (int) $this->get_option('cache_album_images_last_run') : 0;
-			$cache_album_images_current_run = $this->fetchUtcTimestamp();
+			$cache_album_images_current_run = (int) $this->fetchUtcTimestamp();
+			$cache_album_images_first_run   = (int) $this->get_option('cache_album_images_first_run');
+			$cache_album_images_last_run    = (int) $this->get_option('cache_album_images_last_run');
+
+			$cache_album_images             = (array) $this->get_option('cache_album_images');
+
+			// Reset cache daily.
+			if ($cache_album_images_reset || ($cache_album_images_current_run - $cache_album_images_first_run) >= (strtotime('+1 day') - strtotime('now'))) {
+				$cache_album_images_first_run = (int) $cache_album_images_current_run;
+				$cache_album_images_last_run  = 0;
+				$cache_album_images           = array();
+			}
 
 			$albums = $this->service->request('https://graph.facebook.com/' . $this->endpoint_prefix . '/albums?fields=id,name,created_time,updated_time,privacy,type');
 			foreach ($albums->data as $album) {
@@ -1421,8 +1427,11 @@ function Keyring_Facebook_Importer() {
 				while ($url = $this->cache_album_images_walk($url, $cache_album_images, $cache_album_images_last_run));
 			}
 
+			$cache_album_images_last_run = (int) $cache_album_images_current_run;
+
 			$this->set_option('cache_album_images', $cache_album_images);
-			$this->set_option('cache_album_images_last_run', $cache_album_images_current_run);
+			$this->set_option('cache_album_images_first_run', $cache_album_images_first_run);
+			$this->set_option('cache_album_images_last_run', $cache_album_images_last_run);
 
 			return $cache_album_images;
 		}
