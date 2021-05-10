@@ -594,7 +594,7 @@ function Keyring_Facebook_Importer() {
 									$this->log(__METHOD__ . ': service->request>comments/videos : ' . $attachment->target->id);
 									$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 									$videos[] = $video_object->source;
-									$post_content .= '[video src="' . $video_object->source . '" loop="on"]' . PHP_EOL . PHP_EOL;
+									$post_content .= '[video src="' . esc_url($video_object->source) . '" loop="on"]' . PHP_EOL . PHP_EOL;
 								}
 							}
 
