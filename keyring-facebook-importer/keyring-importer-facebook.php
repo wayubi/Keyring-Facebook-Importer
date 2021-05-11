@@ -23,7 +23,7 @@ function Keyring_Facebook_Importer() {
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2016-03-31',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2021-05-31',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -513,12 +513,6 @@ function Keyring_Facebook_Importer() {
 
 				$post_title = $this->prepare_post_title($post_title);
 
-				var_dump($post);
-				var_dump($post->attachments->data[0]);
-				var_dump($videos);
-				var_dump($photos);
-				// exit;
-
 				// Prepare post body
 
 				$post_content = '';
@@ -575,7 +569,7 @@ function Keyring_Facebook_Importer() {
 				if (!empty($comment_trigger)) {
 					if (!empty($post->comments)) {
 						foreach ($post->comments->data as $data) {
-							
+
 							if (substr($data->message, 0, strlen($comment_trigger)) != $comment_trigger)
 								continue;
 
