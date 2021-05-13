@@ -508,8 +508,9 @@ function Keyring_Facebook_Importer() {
 				}
 
 				// Prepare post title
-
 				$post_title = '';
+				if (!empty($post->name)) $post->message = preg_replace('/^https{0,1}:\/\/.*?(\s|$)/', '', $post->message);
+
 				if (!empty($post->message))
 					$post_title = $post->message;
 				else if (!empty($post->story))
@@ -521,10 +522,11 @@ function Keyring_Facebook_Importer() {
 					$post_title = $post->message;
 				}
 
+				$post_title = trim(preg_replace('/https{0,1}:\/\/.*?(\s|$)/', '', $post_title));
 				$post_title = $this->prepare_post_title($post_title);
+				if (empty($post_title)) $post_title = 'Untitled';
 
 				// Prepare post body
-
 				$post_content = '';
 
 				// Inject first image
@@ -1549,7 +1551,8 @@ function Keyring_Facebook_Importer() {
 			$this->log(__METHOD__);
 
 			$message = preg_split('/\n/', $post_title);
-			$title_words = explode(' ', strip_tags($message[0]));
+			// $title_words = explode(' ', strip_tags($message[0]));
+			$title_words = explode(' ', preg_replace ('/<[^>]*>/', ' ', $message[0]));
 			$post_title  = implode(' ', array_slice($title_words, 0, 9));
 
 			$post_title = rtrim($post_title, '.,;:');
