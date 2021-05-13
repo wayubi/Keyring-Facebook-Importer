@@ -224,7 +224,7 @@ function Keyring_Facebook_Importer() {
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
 
-			$url = str_replace('comments%2C', '', $url);
+			// $url = str_replace('comments%2C', '', $url);
 
 			// var_dump($url);
 
