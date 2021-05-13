@@ -626,7 +626,7 @@ function Keyring_Facebook_Importer() {
 				if (
 					$post->link != $post->permalink_url
 					&& (!empty($post->name) || !empty($post->description))
-					&& !in_array(pathinfo($post->link)['extension'], array('jpg', 'jpg:large', 'png', 'png:large'))
+					// && !in_array(pathinfo($post->link)['extension'], array('jpg', 'jpg:large', 'png', 'png:large'))
 				) {
 					$post_content .= '<blockquote>';
 
