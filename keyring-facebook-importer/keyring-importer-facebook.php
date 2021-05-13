@@ -15,15 +15,16 @@ function Keyring_Facebook_Importer() {
 		 */
 		private $api_endpoints = array(
 			'/posts',
-			// '/albums',
-			// '/photos',
+			// '/albums', -- I don't use these, but they're still here.
+			// '/photos', -- I don't use these, but they're still here.
 		);
 
 		/**
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2021-05-31',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2010-01-21',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&since=2010-12-01&until=2010-12-31',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -193,7 +194,10 @@ function Keyring_Facebook_Importer() {
 			// Base request URL
 			$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
 			// var_dump($url);
-			return $url;
+			// return $url;
+
+			// var_dump($url);
+			// var_dump($this->current_endpoint);
 
 			if ($this->auto_import) {
 				// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -219,6 +223,12 @@ function Keyring_Facebook_Importer() {
 				// Handle page offsets (only for non-auto-import requests)
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
+
+			$url = str_replace('comments%2C', '', $url);
+
+			// var_dump($url);
+
+			// exit;
 
 			return $url;
 		}
@@ -520,7 +530,7 @@ function Keyring_Facebook_Importer() {
 				// Inject first image
 				if (!empty($photos)) {
 					if (!empty($videos) || stristr($post->link, 'youtube.com')) {
-						$post_content .= '<p class="vthumb"><img src="' . $photos[0] . '" /></p>' . PHP_EOL . PHP_EOL;
+						$post_content .= '<p class="keyring-facebook-video-thumbnail"><img src="' . $photos[0] . '" /></p>' . PHP_EOL . PHP_EOL;
 					} else {
 						$post_content .= '<img src="' . $photos[0] . '" />' . PHP_EOL . PHP_EOL;
 					}
@@ -692,6 +702,9 @@ function Keyring_Facebook_Importer() {
 			foreach ($importdata->data as $album) {
 
 				if (!$import_private_posts && !empty($album->privacy) && $album->privacy == 'custom')
+					continue;
+
+				if ($album->type != 'normal')
 					continue;
 
 				$facebook_id = $album->id;
