@@ -23,8 +23,8 @@ function Keyring_Facebook_Importer() {
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2010-01-21',
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&since=2010-12-01&until=2010-12-31',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2010-02-05',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&since=2012-03-20&until=2012-04-31',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -224,9 +224,8 @@ function Keyring_Facebook_Importer() {
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
 
-			// $url = str_replace('comments%2C', '', $url);
-
-			// var_dump($url);
+			// $url = str_replace('comments,', '', $url);
+			var_dump($url);
 
 			// exit;
 
@@ -454,7 +453,7 @@ function Keyring_Facebook_Importer() {
 							$post->name = 'Year in Review';
 							$post->link = $data->url;
 						} else if ($data->type == 'profile_media' || $data->title == 'Profile Pictures') {
-							$post->message = 'Profile';
+							// $post->message = 'Profile';
 							$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
 							$photos[] = $this->fetchHighResImage($photo_object->images);
 						} else if ($data->type == 'photo') {
@@ -521,8 +520,7 @@ function Keyring_Facebook_Importer() {
 				else if (!empty($post->name))
 					$post_title = $post->name;
 				else {
-					$post->message = 'Untitled';
-					$post_title = $post->message;
+					$post_title = 'Untitled';
 				}
 
 				$post_title = trim(preg_replace('/https{0,1}:\/\/.*?(\s|$)/', '', $post_title));
