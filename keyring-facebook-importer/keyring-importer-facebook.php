@@ -23,8 +23,8 @@ function Keyring_Facebook_Importer() {
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&until=2010-02-05',
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place&since=2012-03-20&until=2012-04-31',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,privacy,place,application&until=2012-05-25',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2012-07-25&until=2012-08-31',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -655,7 +655,9 @@ function Keyring_Facebook_Importer() {
 					$post_content .= '<blockquote>';
 
 					if (!empty($post->name)) {
-						if (!empty($post->description)) {
+						if (!empty($post->link) && $post->name == $post->link) {
+							// do nothing
+						} else if (!empty($post->description)) {
 							if (($this->prepare_post_title($post->name) != $this->prepare_post_title($post->description))) {
 								$post_content .= $post->name . PHP_EOL . PHP_EOL;
 							}
