@@ -410,11 +410,14 @@ function Keyring_Facebook_Importer() {
 
 					foreach ($post->attachments->data as $data) {
 
-						if ($data->type == 'album' && !empty($data->target)) {
+						// if ($data->type == 'album' && !empty($data->target)) {
+						if ($data->type == 'album') {
 
 							if (!empty($data->subattachments) && !empty($data->subattachments->data)) {
 
 								foreach ($data->subattachments->data as $s_data) {
+
+									if ($s_data->target->id != $post->object_id) continue;
 		
 									if ($s_data->type == 'photo') {
 										if (array_key_exists($s_data->target->id, $cache_album_images)) {
