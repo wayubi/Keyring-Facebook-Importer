@@ -405,18 +405,24 @@ function Keyring_Facebook_Importer() {
 				$videos = array();
 				$photos = array();
 
+				// var_dump($post);
+
 				if (!empty($post->attachments) && !empty($post->attachments->data)) {
 
 					foreach ($post->attachments->data as $data) {
 
+						// var_dump($data);
+
 						// if ($data->type == 'album' && !empty($data->target)) {
-						if ($data->type == 'album') {
+						if ($data->type == 'album' || $data->type == 'new_album') {
 
 							if (!empty($data->subattachments) && !empty($data->subattachments->data)) {
 
 								foreach ($data->subattachments->data as $s_data) {
 
-									if ($s_data->target->id != $post->object_id) continue;
+									// var_dump($s_data);
+
+									// if ($s_data->target->id != $post->object_id) continue;
 		
 									if ($s_data->type == 'photo') {
 										if (array_key_exists($s_data->target->id, $cache_album_images)) {
@@ -446,6 +452,13 @@ function Keyring_Facebook_Importer() {
 								}						
 							}
 
+						} else if ($data->type == 'stream_publish') {
+							$post->name        = $data->title;
+							$post->description = $data->description;
+							$post->link        = $data->url;
+						} else if ($data->type == 'knowledge_note') {
+							$post->name = $data->title;
+							$post->link = $data->url;
 						} else if ($data->type == 'goodwill_shared_card') {
 							$post->name = $data->title;
 							$post->link = $data->url;
@@ -453,7 +466,7 @@ function Keyring_Facebook_Importer() {
 							$post->name = 'Year in Review';
 							$post->link = $data->url;
 						} else if ($data->type == 'profile_media' || $data->title == 'Profile Pictures') {
-							// $post->message = 'Profile';
+							$post->name = 'Profile';
 							$photo_object = $this->service->request('https://graph.facebook.com/' . $post->object_id . '?fields=images');
 							$photos[] = $this->fetchHighResImage($photo_object->images);
 						} else if ($data->type == 'photo') {
@@ -499,6 +512,10 @@ function Keyring_Facebook_Importer() {
 								$photos[] = $post->full_picture;
 						}
 					}
+				} else if (!empty($post->application)) {
+					$post->message = 'Used Application: ' . $post->application->name;
+					$post->name = $post->application->name;
+					$post->link = $post->application->link;
 				} else {
 
 					if ($post->type == 'photo') {
@@ -513,7 +530,9 @@ function Keyring_Facebook_Importer() {
 				$post_title = '';
 				if (!empty($post->name)) $post->message = preg_replace('/^https{0,1}:\/\/.*?(\s|$)/', '', $post->message);
 
-				if (!empty($post->message))
+				if (!empty($post->name) && $post->link == $post->permalink_url)
+					$post_title = $post->name;
+				else if (!empty($post->message))
 					$post_title = $post->message;
 				else if (!empty($post->story))
 					$post_title = $post->story;
@@ -567,6 +586,9 @@ function Keyring_Facebook_Importer() {
 				}
 
 				// Continue with text
+				if (!empty($post->name) && $post->link == $post->permalink_url)
+					$post_content .= $this->make_clickable($post->name, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
+
 				if (!empty($post->story))
 					$post_content .= $this->make_clickable($post->story, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
@@ -627,6 +649,7 @@ function Keyring_Facebook_Importer() {
 				if (
 					$post->link != $post->permalink_url
 					&& (!empty($post->name) || !empty($post->description))
+					&& (!strstr($post->link, 'facebook.com/photo.php'))
 					// && !in_array(pathinfo($post->link)['extension'], array('jpg', 'jpg:large', 'png', 'png:large'))
 				) {
 					$post_content .= '<blockquote>';
