@@ -474,7 +474,7 @@ function Keyring_Facebook_Importer() {
 							} else {
 								$this->log(__METHOD__ . ': service->request>images : ' . $data->target->id);
 								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
-								$photos[] = $this->fetchHighResImage($photo_object->images);
+								$photos[] = !empty($photo_object->images) ? $this->fetchHighResImage($photo_object->images) : $data->media->image->src;
 							}
 						} else if (($data->type == 'video_inline' || $data->type == 'animated_image_video') && !empty($data->media->source)) {
 							$this->log(__METHOD__ . ': service->request>videos : ' . $data->target->id);
