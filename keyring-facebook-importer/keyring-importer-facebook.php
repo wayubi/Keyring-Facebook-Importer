@@ -388,13 +388,11 @@ function Keyring_Facebook_Importer() {
 					if ($post->name == 'Timeline Photos') unset($post->name);
 
 					if ((bool) preg_match('/^.*?\scover photo$/', $post->name)) {
-						$post->message = 'Cover';
-						unset($post->name);
+						$post->name = 'Cover';
 					}
 
 					if ((bool) preg_match('/^Photos\sfrom\s.*?\spost$/', $post->name)) {
-						if (empty($post->message)) $post->message = 'Photos';
-						unset($post->name);
+						$post->name = 'Photos';
 					}
 
 					if ((bool) preg_match('/^' . preg_quote($post->name, '/'). '.*?$/', $this->service->get_token()->get_display())) unset($post->name);
@@ -538,6 +536,8 @@ function Keyring_Facebook_Importer() {
 					$post_title = $post->story;
 				else if (!empty($post->name))
 					$post_title = $post->name;
+				else if (!empty($post->place) && !empty($post->place->name))
+					$post_title = $post->place->name;
 				else {
 					$post_title = 'Untitled';
 				}
