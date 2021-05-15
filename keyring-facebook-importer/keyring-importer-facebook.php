@@ -586,7 +586,7 @@ function Keyring_Facebook_Importer() {
 				}
 
 				// Continue with text
-				if (!empty($post->name) && $post->link == $post->permalink_url)
+				if (!empty($post->name) && ($post->link == $post->permalink_url) && ($post->name != $post->message))
 					$post_content .= $this->make_clickable($post->name, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
 				if (!empty($post->story))
