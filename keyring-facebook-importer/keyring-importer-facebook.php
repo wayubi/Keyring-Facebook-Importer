@@ -411,8 +411,11 @@ function Keyring_Facebook_Importer() {
 
 						// var_dump($data);
 
-						// if ($data->type == 'album' && !empty($data->target)) {
-						if ($data->type == 'album' || $data->type == 'new_album') {
+						if (
+							$data->type == 'album' ||
+							$data->type == 'new_album' ||
+							$data->type == 'life_event'
+						) {
 
 							if (!empty($data->subattachments) && !empty($data->subattachments->data)) {
 
