@@ -519,6 +519,20 @@ function Keyring_Facebook_Importer() {
 							$photos[] = $post->link;
 						} else if ($data->type == 'animated_image_share') {
 							$photos[] = $post->link;
+						} else if ($data->type == 'native_templates') {
+
+							$post->name = $data->title;
+							$post->description = $data->description;
+							$post->link = $data->url;
+
+							if (array_key_exists($data->target->id, $cache_album_images)) {
+								$this->log(__METHOD__ . ': cache_album_images : ' . $data->target->id);
+								$photos[] = $cache_album_images[$data->target->id];
+							} else {
+								$this->log(__METHOD__ . ': service->request>images : ' . $data->target->id);
+								$photo_object = $this->service->request('https://graph.facebook.com/' . $data->target->id . '?fields=images');
+								$photos[] = !empty($photo_object->images) ? $this->fetchHighResImage($photo_object->images) : $data->media->image->src;
+							}
 						} else {
 							if (!empty($post->full_picture))
 								$photos[] = $post->full_picture;
