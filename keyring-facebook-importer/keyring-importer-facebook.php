@@ -694,7 +694,7 @@ function Keyring_Facebook_Importer() {
 						}
 					}
 
-					if (!empty($post->description))
+					if (!empty(str_replace('&nbsp;', '', $post->description)))
 						$post_content .= $this->make_clickable($post->description, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
 					if (!empty($post->link))
