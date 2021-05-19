@@ -621,9 +621,13 @@ function Keyring_Facebook_Importer() {
 					$post_content .= $this->make_clickable($post->story, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
 				if (!empty($post->message)) {
-					$message = $post->message;
-					$message = preg_replace('/(https{0,1}:\/\/www.facebook.com).+?(posts\/\d+)/', '$1/' . $this->service->get_token()->get_meta('user_id') . '/$2', $message);
-					$post_content .= $this->make_clickable($message, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
+					if (!empty($post->name) && ($post->link != $post->permalink_url) && ($post->name == $post->message)) {
+						// do nothing
+					} else {
+						$message = $post->message;
+						$message = preg_replace('/(https{0,1}:\/\/www.facebook.com).+?(posts\/\d+)/', '$1/' . $this->service->get_token()->get_meta('user_id') . '/$2', $message);
+						$post_content .= $this->make_clickable($message, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
+					}
 				}
 
 				// Prepare comments
