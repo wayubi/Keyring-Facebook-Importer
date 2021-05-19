@@ -378,6 +378,15 @@ function Keyring_Facebook_Importer() {
 
 				$facebook_raw = $post;
 
+				// Adjustments for Hootsuite links.
+				if (!empty($post->application) && $post->application->name == 'Hootsuite') {
+					$ch = curl_init();
+					curl_setopt($ch, CURLOPT_URL, $post->link);
+					curl_exec($ch);
+					$post->link = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+					curl_close($ch);
+				}
+
 				// Parse/adjust dates
 				$post_date_gmt = gmdate('Y-m-d H:i:s', strtotime($post->created_time));
 				$post_date = get_date_from_gmt($post_date_gmt);
@@ -508,12 +517,14 @@ function Keyring_Facebook_Importer() {
 							$photos[] = $data->media->image->src;
 						} else if ($data->type == 'image_share') {
 							$photos[] = $post->link;
+						} else if ($data->type == 'animated_image_share') {
+							$photos[] = $post->link;
 						} else {
 							if (!empty($post->full_picture))
 								$photos[] = $post->full_picture;
 						}
 					}
-				} else if (!empty($post->application)) {
+				} else if (!empty($post->application) && empty($post->message)) {
 					$post->message = 'Used Application: ' . $post->application->name;
 					$post->name = $post->application->name;
 					$post->link = $post->application->link;
