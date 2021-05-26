@@ -378,8 +378,11 @@ function Keyring_Facebook_Importer() {
 
 				$facebook_raw = $post;
 
-				// Adjustments for Hootsuite links.
-				if (!empty($post->application) && $post->application->name == 'Hootsuite') {
+				// Adjustments for links.
+				if (
+					(!empty($post->application) && $post->application->name == 'Hootsuite') ||
+					((bool) preg_match('/youtu.be\/([\d\w\-\_]+)/', $post->link, $matches))
+				) {
 					$ch = curl_init();
 					curl_setopt($ch, CURLOPT_URL, $post->link);
 					curl_exec($ch);
@@ -408,7 +411,6 @@ function Keyring_Facebook_Importer() {
 				}
 
 				// Prepare media
-
 				$videos = array();
 				$photos = array();
 
@@ -471,6 +473,16 @@ function Keyring_Facebook_Importer() {
 							$post->link = $data->url;
 						} else if ($data->type == 'goodwill_shared_card') {
 							$post->name = $data->title;
+							if ((bool) preg_match('/(\d+)\/posts\/(\d+)/', urldecode($data->url), $matches)) {
+								$fbid = $matches[1] . '_' . $matches[2];
+								$request_object = $this->service->request('https://graph.facebook.com/' . $fbid . '?fields=message,name,link');
+								$post->description = $request_object->message . PHP_EOL . PHP_EOL . $request_object->name;
+							} else if ((bool) preg_match('/fbid=(\d+)/', urldecode($data->url), $matches)) {
+								$fbid = $matches[1];
+								$request_object = $this->service->request('https://graph.facebook.com/' . $fbid . '?fields=name,images,link');
+								$post->description = $request_object->name;
+								$photos[] = $this->fetchHighResImage($request_object->images);
+							}
 							$post->link = $data->url;
 						} else if ($data->type == 'year_in_review') {
 							$post->name = 'Year in Review';
@@ -681,7 +693,7 @@ function Keyring_Facebook_Importer() {
 				if (
 					$post->link != $post->permalink_url
 					&& (!empty($post->name) || !empty($post->description))
-					&& (!strstr($post->link, 'facebook.com/photo.php'))
+					// && (!strstr($post->link, 'facebook.com/photo.php'))
 					// && !in_array(pathinfo($post->link)['extension'], array('jpg', 'jpg:large', 'png', 'png:large'))
 				) {
 					$post_content .= '<blockquote>';
@@ -701,8 +713,10 @@ function Keyring_Facebook_Importer() {
 					if (!empty(str_replace('&nbsp;', '', $post->description)))
 						$post_content .= $this->make_clickable($post->description, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
-					if (!empty($post->link))
+					if (!empty($post->link)) {
 						$post_content .= $this->make_clickable($post->link, array('twitter.com')) . PHP_EOL . PHP_EOL;
+						if (stristr($post->link, 'twitter.com')) $post_content .= $this->make_clickable($post->link) . PHP_EOL . PHP_EOL;
+					}
 
 					$post_content .= '</blockquote>';
 				}
