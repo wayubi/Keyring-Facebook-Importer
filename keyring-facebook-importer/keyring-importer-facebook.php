@@ -23,8 +23,8 @@ function Keyring_Facebook_Importer() {
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,privacy,place,application&until=2012-05-25',
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2012-07-25&until=2012-08-31',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2016-07-27&until=2016-08-02',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2016-11-25&until=2017-01-02',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -414,13 +414,13 @@ function Keyring_Facebook_Importer() {
 				$videos = array();
 				$photos = array();
 
-				// var_dump($post);
+				var_dump($post);
 
 				if (!empty($post->attachments) && !empty($post->attachments->data)) {
 
 					foreach ($post->attachments->data as $data) {
 
-						// var_dump($data);
+						var_dump($data);
 
 						if (
 							$data->type == 'album' ||
@@ -432,7 +432,7 @@ function Keyring_Facebook_Importer() {
 
 								foreach ($data->subattachments->data as $s_data) {
 
-									// var_dump($s_data);
+									var_dump($s_data);
 
 									// if ($s_data->target->id != $post->object_id) continue;
 		
@@ -739,6 +739,14 @@ function Keyring_Facebook_Importer() {
 						$post_status = 'publish';
 					}
 				}
+
+				var_dump($post);
+
+				echo '<pre>';
+				echo htmlspecialchars($post_content);
+				echo '</pre>';
+
+				// exit;
 
 				$compact = compact(
 					'post_author',
