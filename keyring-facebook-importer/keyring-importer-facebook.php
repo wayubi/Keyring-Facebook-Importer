@@ -23,7 +23,7 @@ function Keyring_Facebook_Importer() {
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2016-07-27&until=2016-08-02',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2010-10-29&until=2010-11-07',
 			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2016-11-25&until=2017-01-02',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
@@ -713,10 +713,8 @@ function Keyring_Facebook_Importer() {
 					if (!empty(str_replace('&nbsp;', '', $post->description)))
 						$post_content .= $this->make_clickable($post->description, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
-					if (!empty($post->link)) {
+					if (!empty($post->link))
 						$post_content .= $this->make_clickable($post->link, array('twitter.com')) . PHP_EOL . PHP_EOL;
-						if (stristr($post->link, 'twitter.com')) $post_content .= $this->make_clickable($post->link) . PHP_EOL . PHP_EOL;
-					}
 
 					$post_content .= '</blockquote>';
 				}
