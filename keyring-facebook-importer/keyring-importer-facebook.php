@@ -528,7 +528,11 @@ function Keyring_Facebook_Importer() {
 							$post->message = $message;
 							$photos[] = $data->media->image->src;
 						} else if ($data->type == 'image_share') {
-							$photos[] = $post->link;
+							// $photos[] = $post->link;
+							// $photos[] = $data->media->image->src;
+							$photos[] = $data->url;
+						} else if ($data->type == 'share') {
+							$photos[] = $data->media->image->src;
 						} else if ($data->type == 'animated_image_share') {
 							$photos[] = $post->link;
 						} else if ($data->type == 'native_templates') {
@@ -738,7 +742,7 @@ function Keyring_Facebook_Importer() {
 					}
 				}
 
-				var_dump($post);
+				// var_dump($post);
 
 				echo '<pre>';
 				echo htmlspecialchars($post_content);
