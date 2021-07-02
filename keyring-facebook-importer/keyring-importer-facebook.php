@@ -596,7 +596,7 @@ function Keyring_Facebook_Importer() {
 
 				// Inject first image
 				if (!empty($photos)) {
-					if (!empty($videos) || stristr($post->link, 'youtube.com')) {
+					if (!empty($videos) || stristr($post->link, 'youtube.com') || (stristr($post->link, 'facebook.com') && empty($post->source))) {
 						$post_content .= '<p class="keyring-facebook-video-thumbnail"><img src="' . $photos[0] . '" /></p>' . PHP_EOL . PHP_EOL;
 					} else {
 						$post_content .= '<img src="' . $photos[0] . '" />' . PHP_EOL . PHP_EOL;
@@ -614,6 +614,8 @@ function Keyring_Facebook_Importer() {
 					} else if ((bool) preg_match('/youtube\.com.*?v=([\d\w\-\_]+)/', $post->link, $matches)) {
 						$post_content .= 'https://www.youtube.com/watch?v=' . $matches[1] . PHP_EOL . PHP_EOL;
 					}
+				} else if (stristr($post->link, 'facebook.com') && empty($post->source)) {
+					$post_content .= '<iframe src="https://www.facebook.com/plugins/video.php?height=314&href=' . urlencode($post->link) . '&show_text=false&width=560&t=0" width="560" height="314" style="border:none;overflow:hidden" scrolling="no" frameborder="0" allowfullscreen="true" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen="true"></iframe>' . PHP_EOL . PHP_EOL;
 				}
 
 				// Inject remaining images
