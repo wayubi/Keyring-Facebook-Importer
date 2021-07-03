@@ -537,7 +537,7 @@ function Keyring_Facebook_Importer() {
 							} else {
 								$photos[] = $post->full_picture;
 							}
-							if (!empty($data->media->source)) {
+							if (!empty($data->media->source) && !stristr($data->media->source, 'youtube.com')) {
 								$videos[] = $data->media->source;
 							}
 						} else if ($data->type == 'animated_image_share') {
