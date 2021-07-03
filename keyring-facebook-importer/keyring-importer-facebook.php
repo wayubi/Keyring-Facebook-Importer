@@ -532,8 +532,14 @@ function Keyring_Facebook_Importer() {
 							// $photos[] = $data->media->image->src;
 							$photos[] = $data->url;
 						} else if ($data->type == 'share') {
-							// $photos[] = $data->media->image->src;
-							$photos[] = $post->full_picture;
+							if (!empty($post->link) && pathinfo($post->link)['extension'] == 'gif') {
+								$photos[] = $post->link;
+							} else {
+								$photos[] = $post->full_picture;
+							}
+							if (!empty($data->media->source)) {
+								$videos[] = $data->media->source;
+							}
 						} else if ($data->type == 'animated_image_share') {
 							$photos[] = $post->link;
 						} else if ($data->type == 'native_templates') {
