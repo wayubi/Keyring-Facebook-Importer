@@ -530,7 +530,7 @@ function Keyring_Facebook_Importer() {
 						} else if ($data->type == 'image_share') {
 							// $photos[] = $post->link;
 							// $photos[] = $data->media->image->src;
-							$photos[] = $data->url;
+							if (getimagesize($data->url)) $photos[] = $data->url;
 						} else if ($data->type == 'share') {
 							if (!empty($post->link) && pathinfo($post->link)['extension'] == 'gif') {
 								$photos[] = $post->link;
