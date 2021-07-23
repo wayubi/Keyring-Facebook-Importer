@@ -708,7 +708,7 @@ function Keyring_Facebook_Importer() {
 					&& (!empty($post->name) || !empty($post->description))
 					&& (!in_array($post->name, array('Cover Photo', 'Profile Picture', 'Photo Gallery')))
 					// && (!strstr($post->link, 'facebook.com/photo.php'))
-					&& !in_array(pathinfo($post->link)['extension'], array('jpg', 'jpg:large', 'png', 'png:large'))
+					&& !in_array(pathinfo($post->link)['extension'], array('jpg', 'jpg:large', 'png', 'png:large', 'gif'))
 				) {
 					$post_content .= '<blockquote>';
 
