@@ -1211,7 +1211,7 @@ function Keyring_Facebook_Importer() {
 
 			foreach($urls as $url) {
 				$file = array();
-				$file['tmp_name'] = download_url($url);
+				$file['tmp_name'] = download_url($url, 900);
 				$file['name']     = basename(explode('?', $url)[0]); // Strip any querystring to avoid confusing mimetypes
 
 				if (is_wp_error($file['tmp_name'])) {
