@@ -530,7 +530,7 @@ function Keyring_Facebook_Importer() {
 						} else if ($data->type == 'image_share') {
 							// $photos[] = $post->link;
 							// $photos[] = $data->media->image->src;
-							if (getimagesize($data->url)) $photos[] = $data->url;
+							if (@getimagesize($post->link)) $photos[] = $post->link;
 						} else if ($data->type == 'share') {
 							if (!empty($post->link) && pathinfo($post->link)['extension'] == 'gif') {
 								$photos[] = $post->link;
@@ -541,7 +541,10 @@ function Keyring_Facebook_Importer() {
 								$videos[] = $data->media->source;
 							}
 						} else if ($data->type == 'animated_image_share') {
-							$photos[] = $post->link;
+							if (@getimagesize($post->link)) $photos[] = $post->link;
+							if (!empty($data->media->source)) {
+								$videos[] = $data->media->source;
+							}
 						} else if ($data->type == 'native_templates') {
 
 							$post->name = $data->title;
