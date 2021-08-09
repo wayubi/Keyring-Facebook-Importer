@@ -537,7 +537,7 @@ function Keyring_Facebook_Importer() {
 							} else {
 								$photos[] = $post->full_picture;
 							}
-							if (!empty($data->media->source) && !stristr($data->media->source, 'youtube.com')) {
+							if (!empty($data->media->source) && !stristr($data->media->source, 'youtube.com') && !stristr($data->media->source, 'twitter.com')) {
 								$videos[] = $data->media->source;
 							}
 						} else if ($data->type == 'animated_image_share') {
@@ -730,8 +730,11 @@ function Keyring_Facebook_Importer() {
 					if (!empty(str_replace('&nbsp;', '', $post->description)))
 						$post_content .= $this->make_clickable($post->description, array('twitter.com', 'youtube.com')) . PHP_EOL . PHP_EOL;
 
-					if (!empty($post->link))
+					if (!empty($post->link)) {
 						$post_content .= $this->make_clickable($post->link, array('twitter.com')) . PHP_EOL . PHP_EOL;
+						if (stristr($post->link, 'twitter.com'))
+							$post_content .= $this->make_clickable($post->link) . PHP_EOL . PHP_EOL;
+					}
 
 					$post_content .= '</blockquote>';
 				}
