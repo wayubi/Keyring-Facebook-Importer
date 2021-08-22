@@ -407,6 +407,8 @@ function Keyring_Facebook_Importer() {
 						$post->name = 'Photo Gallery';
 					}
 
+					if ($post->name == 'Instagram Photos') unset($post->name);
+
 					if ((bool) preg_match('/^' . preg_quote($post->name, '/'). '.*?$/', $this->service->get_token()->get_display())) unset($post->name);
 				}
 
@@ -1222,7 +1224,7 @@ function Keyring_Facebook_Importer() {
 				if (file_exists($sideload_video_override_file)) {
 					$file['tmp_name'] = $sideload_video_override_file;
 				} else {
-					$file['tmp_name'] = download_url($url, 1200);
+					$file['tmp_name'] = download_url($url, 600);
 				}
 
 				$file['name']     = basename(explode('?', $url)[0]); // Strip any querystring to avoid confusing mimetypes
