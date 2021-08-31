@@ -607,7 +607,7 @@ function Keyring_Facebook_Importer() {
 
 				// Inject first image
 				if (!empty($photos)) {
-					if (!empty($videos) || stristr($post->link, 'youtube.com') || (($post->type == 'video') && stristr($post->link, 'facebook.com') && empty($post->source))) {
+					if (!empty($videos) || stristr($post->link, 'youtube.com') || stristr($post->source, 'youtube.com') || (($post->type == 'video') && stristr($post->link, 'facebook.com') && empty($post->source))) {
 						$post_content .= '<p class="keyring-facebook-video-thumbnail"><img src="' . $photos[0] . '" /></p>' . PHP_EOL . PHP_EOL;
 					} else {
 						$post_content .= '<img src="' . $photos[0] . '" />' . PHP_EOL . PHP_EOL;
@@ -617,12 +617,14 @@ function Keyring_Facebook_Importer() {
 				// Insert first video
 				if (!empty($videos)) { // Embedded
 					$post_content .= '[video src="' . esc_url($videos[0]) . '" loop="on"]' . PHP_EOL . PHP_EOL;
-				} else if (stristr($post->link, 'youtube.com')) { // YouTube
+				} else if (stristr($post->link, 'youtube.com') || stristr($post->source, 'youtube.com')) { // YouTube
 					$matches = array();
 					if ((bool) preg_match('/attribution_link.*?v=([\d\w\-\_]+)/', urldecode($post->link), $matches)) {
 						$post->link = 'https://www.youtube.com/watch?v=' . $matches[1];
 						$post_content .= $post->link . PHP_EOL . PHP_EOL;
 					} else if ((bool) preg_match('/youtube\.com.*?v=([\d\w\-\_]+)/', $post->link, $matches)) {
+						$post_content .= 'https://www.youtube.com/watch?v=' . $matches[1] . PHP_EOL . PHP_EOL;
+					} else if ((bool) preg_match('/youtube\.com\/embed\/([\d\w\-\_]+)/', $post->source, $matches)) {
 						$post_content .= 'https://www.youtube.com/watch?v=' . $matches[1] . PHP_EOL . PHP_EOL;
 					}
 				} else if (($post->type == 'video') && stristr($post->link, 'facebook.com') && empty($post->source)) {
