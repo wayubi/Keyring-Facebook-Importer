@@ -1382,7 +1382,30 @@ function Keyring_Facebook_Importer() {
 				preg_match('/[^\?]+\.(' . implode('|', $allowed_extensions) . ')\b/i', $file, $matches);
 		
 				if (! $matches) {
+
+					// Check mime type
+					$headers = get_headers($file);
+					foreach ($headers as $header) {
+						if ($header == 'Content-Type: image/jpeg') {
+							$matches[0] = md5(rand()) . '.jpeg';
+							break;
+						} else if ($header == 'Content-Type: image/png') {
+							$matches[0] = md5(rand()) . '.png';
+							break;
+						}
+					}
+
+					if (!$matches) {
 					return new WP_Error('image_sideload_failed', __('Invalid image URL.'));
+				}
+				}
+
+				if (stristr($matches[0], '%2F')) {
+					$matches[0] = urldecode($matches[0]);
+					if (stristr($matches[0], '%2F')) {
+						$matches[0] = urldecode($matches[0]);
+					}
+					$matches[0] = substr($matches[0], strrpos($matches[0], '/') + 1);
 				}
 		
 				$file_array         = array();
