@@ -436,6 +436,8 @@ function Keyring_Facebook_Importer() {
 
 									var_dump($s_data);
 
+									if (($data->title == 'Instagram Photos') && ($s_data->target->id != $post->object_id)) continue;
+
 									// if ($s_data->target->id != $post->object_id) continue;
 		
 									if ($s_data->type == 'photo') {
