@@ -1396,8 +1396,8 @@ function Keyring_Facebook_Importer() {
 					}
 
 					if (!$matches) {
-					return new WP_Error('image_sideload_failed', __('Invalid image URL.'));
-				}
+						return new WP_Error('image_sideload_failed', __('Invalid image URL.'));
+					}
 				}
 
 				if (stristr($matches[0], '%2F')) {
