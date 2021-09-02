@@ -1400,9 +1400,9 @@ function Keyring_Facebook_Importer() {
 					}
 				}
 
-				if (stristr($matches[0], '%2F')) {
+				if (stristr($matches[0], '%2F') || stristr($matches[0], '%20')) {
 					$matches[0] = urldecode($matches[0]);
-					if (stristr($matches[0], '%2F')) {
+					if (stristr($matches[0], '%2F') || stristr($matches[0], '%20')) {
 						$matches[0] = urldecode($matches[0]);
 					}
 					$matches[0] = substr($matches[0], strrpos($matches[0], '/') + 1);
