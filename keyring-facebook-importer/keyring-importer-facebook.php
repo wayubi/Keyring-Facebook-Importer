@@ -685,7 +685,7 @@ function Keyring_Facebook_Importer() {
 									$image = $this->fetchHighResImage($photo_object->images);
 									$photos[] = $image;
 									$post_content .= '<img src="' . $image . '" />' . PHP_EOL . PHP_EOL;
-								} else if ($attachment->type == 'video_inline') {
+								} else if ($attachment->type == 'video_inline' || $attachment->type == 'animated_image_video') {
 									$this->log(__METHOD__ . ': service->request>comments/videos : ' . $attachment->target->id);
 									$video_object = $this->service->request('https://graph.facebook.com/' . $attachment->target->id . '?fields=source');
 									$videos[] = $video_object->source;
