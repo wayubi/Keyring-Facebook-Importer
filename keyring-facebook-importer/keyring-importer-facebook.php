@@ -91,6 +91,7 @@ function Keyring_Facebook_Importer() {
 					'fb_post_status'           => $_POST['fb_post_status'],
 					'import_private_posts'     => $_POST['import_private_posts'],
 					'cache_album_images_reset' => $_POST['cache_album_images_reset'],
+					'import_post_id'           => (int) $_POST['import_post_id'],
 					'comment_trigger'          => $_POST['comment_trigger']
 				));
 
@@ -168,6 +169,15 @@ function Keyring_Facebook_Importer() {
 			</tr>
 			<tr valign="top">
 				<th scope="row">
+					<label for="include_rts"><?php esc_html_e('Import individual post', 'keyring-facebook'); ?></label>
+				</th>
+				<td>
+					<input type="text" class="regular-text" name="import_post_id" id="import_post_id" />
+					<p class="description"><?php _e('Enter individual post ID to import.', 'keyring'); ?></p>
+				</td>
+			</tr>
+			<tr valign="top">
+				<th scope="row">
 					<label for="include_rts"><?php esc_html_e('Comment Trigger', 'keyring-facebook'); ?></label>
 				</th>
 				<td>
@@ -190,6 +200,12 @@ function Keyring_Facebook_Importer() {
 
 			$endpoint_prefix_length = strlen($this->endpoint_prefix);
 			$endpoint = substr($this->current_endpoint, $endpoint_prefix_length);
+
+			$import_post_id = $this->get_option('import_post_id');
+			if (!empty($import_post_id)) {
+				$url = "https://graph.facebook.com/" . $this->service->get_token()->get_meta('user_id') . '_' . $import_post_id . "?fields=" . $this->api_endpoint_fields[$endpoint];
+				return $url;
+			}
 
 			// Base request URL
 			$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
@@ -311,6 +327,14 @@ function Keyring_Facebook_Importer() {
 			if (null === $importdata) {
 				$this->finished = true;
 				return new Keyring_Error('keyring-facebook-importer-failed-download', __('Failed to download your statuses from Facebook. Please wait a few minutes and try again.'));
+			}
+
+			// Convert single post to data array
+			$import_post_id = $this->get_option('import_post_id');
+			if (!empty($import_post_id) && is_object($importdata) && !empty($importdata->id)) {
+				$importdata_post = $importdata;
+				$importdata = new stdClass();
+				$importdata->data[0] = $importdata_post;
 			}
 
 			// Make sure we have some statuses to parse
