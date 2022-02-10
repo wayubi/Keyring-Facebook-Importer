@@ -7,7 +7,7 @@ function Keyring_Facebook_Importer() {
 		const LABEL             = 'Facebook';    // e.g. 'Twitter'
 		const KEYRING_SERVICE   = 'Keyring_Service_Facebook';    // Full class name of the Keyring_Service this importer requires
 		const REQUESTS_PER_LOAD = 1;     // How many remote requests should be made before reloading the page?
-		const REQUEST_TIMEOUT   = 600; // Number of seconds to wait before another request
+		const REQUEST_TIMEOUT   = 3; // Number of seconds to wait before another request
 		const LOG_PATH          = '/tmp/log.txt';
 
 		/**
@@ -23,8 +23,9 @@ function Keyring_Facebook_Importer() {
 		 * @var array Endpoint fields.
 		 */
 		private $api_endpoint_fields = array(
-			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2010-10-29&until=2010-11-07',
-			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2016-11-25&until=2017-01-02',
+			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2020-02-25&until=2020-04-05',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2020-06-20&until=2020-07-05',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
 			'/photos' => 'id,name,created_time,updated_time,images',
 		);
@@ -209,11 +210,6 @@ function Keyring_Facebook_Importer() {
 
 			// Base request URL
 			$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
-			// var_dump($url);
-			// return $url;
-
-			// var_dump($url);
-			// var_dump($this->current_endpoint);
 
 			if ($this->auto_import) {
 				// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -234,16 +230,17 @@ function Keyring_Facebook_Importer() {
 				// If we have already imported some, then start since the most recent
 				if ($latest) {
 					$url = add_query_arg('since', strtotime($latest[0]->post_date_gmt) + 1, $url);
+					$url = add_query_arg('until', strtotime('-1 day', time()), $url);
 				}
 			} else {
 				// Handle page offsets (only for non-auto-import requests)
+				$url = add_query_arg('since', strtotime('-1 month', time()), $url);
+				$url = add_query_arg('until', strtotime('-1 day', time()), $url);
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
 
 			// $url = str_replace('comments,', '', $url);
-			var_dump($url);
-
-			// exit;
+			// var_dump($url);
 
 			return $url;
 		}
@@ -791,6 +788,8 @@ function Keyring_Facebook_Importer() {
 				// var_dump($post);
 
 				echo '<pre>';
+				var_dump($photos);
+				var_dump($videos);
 				echo htmlspecialchars($post_content);
 				echo '</pre>';
 
@@ -1231,6 +1230,8 @@ function Keyring_Facebook_Importer() {
 		public function sideload_video($urls, $post_id) {
 			$this->log(__METHOD__);
 
+			$facebook_id = get_post_meta($post_id, 'facebook_id')[0];
+
 			if (! function_exists('media_sideload_image')) {
 				require_once ABSPATH . 'wp-admin/includes/media.php';
 			}
@@ -1248,7 +1249,7 @@ function Keyring_Facebook_Importer() {
 			foreach($urls as $url) {
 				$file = array();
 
-				$sideload_video_override_file = '/tmp/sideload_video_override';
+				$sideload_video_override_file = '/tmp/' . $facebook_id;
 				if (file_exists($sideload_video_override_file)) {
 					$file['tmp_name'] = $sideload_video_override_file;
 				} else {
