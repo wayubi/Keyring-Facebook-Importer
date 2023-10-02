@@ -24,6 +24,7 @@ function Keyring_Facebook_Importer() {
 		 */
 		private $api_endpoint_fields = array(
 			'/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application',
+			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2023-07-01&until=2023-10-01',
 			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2020-02-25&until=2020-04-05',
 			// '/posts'  => 'id,object_id,created_time,updated_time,name,message,description,story,link,source,picture,full_picture,attachments,permalink_url,type,comments,privacy,place,application&since=2020-06-20&until=2020-07-05',
 			'/albums' => 'id,name,created_time,updated_time,privacy,type',
@@ -210,6 +211,7 @@ function Keyring_Facebook_Importer() {
 
 			// Base request URL
 			$url = "https://graph.facebook.com/" . $this->current_endpoint . "?fields=" . $this->api_endpoint_fields[$endpoint];
+			// return $url;
 
 			if ($this->auto_import) {
 				// Get most recent checkin we've imported (if any), and its date so that we can get new ones since then
@@ -239,8 +241,8 @@ function Keyring_Facebook_Importer() {
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
 
-			// $url = str_replace('comments,', '', $url);
-			// var_dump($url);
+			$url = str_replace('comments,', '', $url);
+			var_dump($url);
 
 			return $url;
 		}
@@ -379,6 +381,8 @@ function Keyring_Facebook_Importer() {
 			$cache_album_images = $this->cache_album_images();
 
 			$import_private_posts = (bool) $this->get_option('import_private_posts');
+
+			var_dump($importdata);
 
 			foreach ($importdata->data as $post) {
 
