@@ -236,7 +236,7 @@ function Keyring_Facebook_Importer() {
 				}
 			} else {
 				// Handle page offsets (only for non-auto-import requests)
-				$url = add_query_arg('since', strtotime('-1 month', time()), $url);
+				$url = add_query_arg('since', strtotime('-3 month', time()), $url);
 				$url = add_query_arg('until', strtotime('-10 minutes', time()), $url);
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
