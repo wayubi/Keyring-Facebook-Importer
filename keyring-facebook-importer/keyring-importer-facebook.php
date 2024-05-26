@@ -232,12 +232,12 @@ function Keyring_Facebook_Importer() {
 				// If we have already imported some, then start since the most recent
 				if ($latest) {
 					$url = add_query_arg('since', strtotime($latest[0]->post_date_gmt) + 1, $url);
-					$url = add_query_arg('until', strtotime('-6 hours', time()), $url);
+					$url = add_query_arg('until', strtotime('-10 minutes', time()), $url);
 				}
 			} else {
 				// Handle page offsets (only for non-auto-import requests)
 				$url = add_query_arg('since', strtotime('-1 month', time()), $url);
-				$url = add_query_arg('until', strtotime('-6 hours', time()), $url);
+				$url = add_query_arg('until', strtotime('-10 minutes', time()), $url);
 				$url = $this->get_option('paging:' . $this->current_endpoint, $url);
 			}
 
